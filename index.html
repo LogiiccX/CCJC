@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCJC Daily Trade Coordination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16263b; --navy-2:#1f3a57; --steel:#3d5a73; --steel-soft:#6d879b; --brass:#b8862f;
+  --bg:#eef1f4; --panel:#fff; --line:#d5dde4; --line-soft:#e8edf1; --ink:#1a2733; --ink-soft:#5a6b78;
+  --plan:#6d879b; --active:#2f6fb0; --block:#c0392b; --done:#2f855a; --amber:#c98a1a;
+  --shadow:0 1px 2px rgba(22,38,59,.06),0 3px 10px rgba(22,38,59,.05);
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.42;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{margin:0;}
+button{font-family:inherit;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+
+/* header */
+header{background:var(--navy);color:#fff;border-bottom:3px solid var(--brass);}
+.htop{max-width:1440px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.brand{display:flex;flex-direction:column;line-height:1;margin-right:auto;flex-shrink:0;}
+.brand .t{font-family:'Barlow Semi Condensed';font-weight:700;font-size:23px;letter-spacing:.5px;}
+.brand .s{font-size:10.5px;letter-spacing:2.3px;text-transform:uppercase;color:#9db2c6;margin-top:4px;font-weight:600;}
+.hfields{display:flex;gap:10px;flex-wrap:wrap;}
+.hf{display:flex;flex-direction:column;background:var(--navy-2);border:1px solid #33507099;border-radius:8px;padding:5px 11px;min-width:120px;}
+.hf label{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:var(--brass);font-weight:700;margin-bottom:2px;}
+.hf input{background:transparent;border:0;color:#fff;font-size:13.5px;font-family:'Inter';padding:1px 0;}
+.hf input::placeholder{color:#7590a8;}
+.hf input:focus{outline:none;}
+.hf input[type=date]{font-family:'IBM Plex Mono';font-size:13px;}
+.hf input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.55);}
+.hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.timer{display:flex;align-items:center;gap:8px;background:var(--navy-2);border:1px solid #33507099;border-radius:8px;padding:5px 10px;}
+.timer .lab{font-size:9px;letter-spacing:1.4px;color:var(--steel-soft);text-transform:uppercase;font-weight:700;}
+.timer .val{font-family:'IBM Plex Mono';font-size:18px;font-weight:600;min-width:64px;text-align:center;}
+.timer button{background:transparent;border:1px solid #33507099;color:#cdd8e2;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:13px;}
+.timer button:hover{background:#274563;color:#fff;}
+.savechip{display:flex;align-items:center;gap:6px;font-size:11px;color:#bcccdb;font-weight:600;}
+.savechip .dot{width:8px;height:8px;border-radius:50%;background:var(--done);}
+.savechip.dirty .dot{background:var(--amber);}
+.savechip .mode{font-size:10px;color:#7590a8;font-weight:500;}
+.hbtns{display:flex;gap:7px;flex-wrap:wrap;}
+.hbtns button{background:transparent;color:#cdd8e2;border:1px solid #33507099;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.hbtns button:hover{background:var(--navy-2);color:#fff;border-color:var(--brass);}
+.hbtns button.primary{background:var(--brass);color:#20180a;border-color:var(--brass);}
+.hbtns button.primary:hover{background:#caa04b;}
+
+/* tabs */
+.tabwrap{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+.tabs{max-width:1440px;margin:0 auto;padding:0 18px;display:flex;gap:1px;overflow-x:auto;}
+.tab{appearance:none;background:none;border:0;cursor:pointer;padding:13px 16px 11px;border-bottom:3px solid transparent;font-family:'Barlow Semi Condensed';font-weight:600;font-size:15px;color:var(--ink-soft);letter-spacing:.3px;white-space:nowrap;display:flex;align-items:center;gap:7px;}
+.tab:hover{color:var(--navy);}
+.tab.on{color:var(--navy);border-bottom-color:var(--brass);}
+.tab .badge{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;background:var(--line-soft);color:var(--ink-soft);border-radius:10px;padding:1px 7px;}
+.tab.on .badge{background:var(--navy);color:#fff;}
+
+/* layout */
+main{max-width:1440px;margin:0 auto;padding:20px 22px 70px;}
+.view{display:none;}
+.view.on{display:block;}
+.sechead{display:flex;align-items:center;gap:12px;margin:2px 2px 14px;flex-wrap:wrap;}
+.sechead h2{font-family:'Barlow Semi Condensed';font-weight:700;font-size:22px;color:var(--navy);letter-spacing:.3px;display:flex;align-items:center;gap:9px;}
+.sechead .desc{font-size:12.5px;color:var(--ink-soft);}
+.sechead .spacer{margin-left:auto;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+.card+.card{margin-top:16px;}
+.cardhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line-soft);}
+.cardhead h3{font-family:'Barlow Semi Condensed';font-weight:700;font-size:16px;color:var(--navy);display:flex;align-items:center;gap:8px;}
+.cardhead .spacer{margin-left:auto;}
+.cardbody{padding:14px 16px;}
+
+.btn{background:var(--panel);border:1px solid var(--line);color:var(--steel);padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{border-color:var(--navy);color:var(--navy);background:#f8fafc;}
+.btn.solid{background:var(--navy);color:#fff;border-color:var(--navy);}
+.btn.solid:hover{background:var(--navy-2);color:#fff;}
+.btn.brass{background:var(--brass);color:#20180a;border-color:var(--brass);}
+.btn.brass:hover{background:#caa04b;}
+.btn.sm{padding:5px 10px;font-size:11.5px;}
+.btn.danger:hover{border-color:var(--block);color:var(--block);}
+
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--navy);color:#dbe5ee;text-align:left;font-family:'Barlow Semi Condensed';font-weight:600;font-size:12px;letter-spacing:.5px;text-transform:uppercase;padding:9px 11px;border-right:1px solid #2a476a;}
+thead th:last-child{border-right:0;}
+tbody td{border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft);padding:9px 11px;vertical-align:top;font-size:13px;}
+tbody td:last-child{border-right:0;}
+tbody tr:last-child td{border-bottom:0;}
+tbody tr:hover{background:#f8fafc;}
+td.num,th.num{text-align:center;font-family:'IBM Plex Mono';}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);background:var(--panel);}
+
+input.f,select.f,textarea.f{width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:'Inter';font-size:13px;color:var(--ink);padding:8px 10px;}
+textarea.f{resize:vertical;min-height:38px;}
+input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--brass);outline-offset:-1px;}
+select.f{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;cursor:pointer;}
+.fieldgrid{display:grid;gap:10px;}
+.field label{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--steel);font-weight:700;margin-bottom:4px;}
+.formpanel{display:none;background:#f7f9fb;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;}
+.formpanel.on{display:block;}
+.formpanel h4{font-family:'Barlow Semi Condensed';font-size:15px;color:var(--navy);margin-bottom:12px;font-weight:700;}
+.formactions{display:flex;gap:8px;margin-top:12px;}
+
+select.statussel{appearance:none;border-radius:20px;font-weight:600;font-size:11.5px;padding:4px 24px 4px 11px;cursor:pointer;border:1px solid transparent;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;}
+select.statussel[data-v="Planned"],select.statussel[data-v="Scheduled"]{color:var(--plan);background-color:#f2f5f8;border-color:#c8d3dc;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");}
+select.statussel[data-v="Active"],select.statussel[data-v="In Progress"]{color:#fff;background-color:var(--active);}
+select.statussel[data-v="Blocked"],select.statussel[data-v="Failed"]{color:#fff;background-color:var(--block);}
+select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
+
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.person{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;}
+.person .statusdot{width:16px;height:16px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
+.person .statusdot.here{background:var(--done);}
+.person .statusdot.remote{background:var(--amber);}
+.person .statusdot.absent{background:#c3ccd4;}
+.person .nm{font-weight:600;font-size:13.5px;line-height:1.2;}
+.person .co{font-size:11.5px;color:var(--ink-soft);}
+.person .x{margin-left:auto;background:none;border:0;color:#c3ccd4;cursor:pointer;font-size:15px;}
+.person .x:hover{color:var(--block);}
+.hint{font-size:11.5px;color:var(--ink-soft);}
+
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.subtab{background:#fff;border:1px solid var(--line);border-radius:20px;padding:7px 15px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;gap:7px;}
+.subtab.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.subtab .b{font-family:'IBM Plex Mono';font-size:10.5px;background:rgba(255,255,255,.18);padding:0 6px;border-radius:8px;}
+.subtab:not(.on) .b{background:var(--line-soft);color:var(--ink-soft);}
+.tradeblock{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;background:#fff;overflow:hidden;}
+.tradeblock .bh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f4f7fa;border-bottom:1px solid var(--line-soft);}
+.tradeblock .bh .nm{font-family:'Barlow Semi Condensed';font-weight:700;font-size:15px;color:var(--navy);}
+.tradeblock .bh .spacer{margin-left:auto;}
+.task{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line-soft);}
+.task:last-child{border-bottom:0;}
+.task .tx{flex:1;border:0;background:transparent;font-size:13.5px;font-family:'Inter';resize:none;padding:2px 0;line-height:1.4;color:var(--ink);min-height:20px;}
+.task .tx:focus{outline:none;}
+.task .x{background:none;border:0;color:#c3ccd4;cursor:pointer;font-size:14px;}
+.task .x:hover{color:var(--block);}
+.notask{padding:12px 14px;color:var(--ink-soft);font-size:12.5px;}
+
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 15px;}
+.stat .k{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--steel);font-weight:700;}
+.stat .v{font-family:'IBM Plex Mono';font-size:27px;font-weight:600;color:var(--navy);margin-top:5px;line-height:1;}
+.stat .sub{font-size:11px;color:var(--ink-soft);margin-top:5px;}
+.attsnap{display:flex;gap:8px;flex-wrap:wrap;}
+.attsnap .a{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:12.5px;}
+.attsnap .a .d{width:9px;height:9px;border-radius:50%;}
+.emptymsg{padding:26px;text-align:center;color:var(--ink-soft);font-size:13px;}
+.totrow td{font-weight:700;background:#f4f7fa;}
+
+.overlay{position:fixed;inset:0;background:rgba(15,25,38,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 16px;overflow:auto;}
+.overlay.on{display:flex;}
+.modal{background:#fff;border-radius:14px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+.modal .mh{background:var(--navy);color:#fff;padding:16px 20px;border-bottom:3px solid var(--brass);}
+.modal .mh h3{font-family:'Barlow Semi Condensed';font-size:20px;font-weight:700;}
+.modal .mh p{font-size:12.5px;color:#bcccdb;margin-top:4px;}
+.modal .mb{padding:18px 20px;}
+.carry{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;cursor:pointer;}
+.carry:hover{background:#f7f9fb;}
+.carry input{margin-top:2px;width:17px;height:17px;accent-color:var(--brass);flex-shrink:0;}
+.carry .ct{display:block;font-weight:600;font-size:13.5px;}
+.carry .cd{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+.modal .mf{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--line-soft);background:#f7f9fb;}
+
+.printonly{display:none;}
+@media print{
+  @page{size:landscape;margin:12mm;}
+  body{background:#fff;}
+  header,.tabwrap,.hbtns,.timer,.btn,.subtabs,.task .x,.person .x,.formpanel,.sechead .spacer{display:none !important;}
+  main{max-width:100%;padding:0;}
+  .view{display:none !important;}
+  body.print-summary #v-summary{display:block !important;}
+  body.print-manhours #v-manhours{display:block !important;}
+  .card,.tblwrap{box-shadow:none;border:1px solid #999;break-inside:avoid;}
+  thead th{background:var(--navy) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .stat .v{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .printonly{display:block;margin-bottom:12px;}
+  .printonly h1{font-family:'Barlow Semi Condensed';color:var(--navy);font-size:20px;}
+  .printonly .pm{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink-soft);}
+}
+@media(max-width:820px){.brand{margin-right:0;}.hright{width:100%;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htop">
+    <div class="brand">
+      <span class="t">CCJC · Daily Trade Coordination</span>
+      <span class="s">Yates–Metcon · Courthouse · Detention Center · Sheriff's Office</span>
+    </div>
+    <div class="hfields">
+      <div class="hf"><label>Date</label><input type="date" id="f-date"></div>
+      <div class="hf"><label>Facilitator</label><input id="f-facilitator" placeholder="Name"></div>
+      <div class="hf" style="min-width:170px;"><label>Safety Topic</label><input id="f-topic" placeholder="Today's topic"></div>
+    </div>
+    <div class="hright">
+      <div class="timer">
+        <div><div class="lab">Elapsed</div><div class="val" id="timer-val">00:00</div></div>
+        <button id="timer-toggle" title="Start / pause">▶</button>
+        <button id="timer-reset" title="Reset">↺</button>
+      </div>
+      <div class="savechip" id="savechip"><span class="dot"></span><span>Saved</span><span class="mode" id="savemode">· Local only</span></div>
+      <div class="hbtns">
+        <button id="btn-newday" class="primary">🗓 New Day</button>
+        <button id="btn-export">↧ Export</button>
+        <button id="btn-import">↥ Import</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="tabwrap"><div class="tabs" id="tabs"></div></div>
+
+<main>
+  <section class="view" id="v-summary">
+    <div class="printonly" id="print-summary-head"></div>
+    <div class="sechead"><h2>📋 Meeting Overview</h2><div class="spacer"></div><button class="btn" id="btn-pdf-summary">⬇ Export PDF Summary</button></div>
+    <div class="statgrid" id="summary-stats"></div>
+    <div class="card"><div class="cardhead"><h3>👥 Attendance Snapshot</h3></div><div class="cardbody"><div class="attsnap" id="summary-att"></div></div></div>
+    <div class="card"><div class="cardhead"><h3>💪 Manpower by Trade</h3></div><div class="cardbody" style="padding:0;"><div class="tblwrap" style="border:0;box-shadow:none;border-radius:0;"><table id="summary-manpower"></table></div></div></div>
+    <div class="card"><div class="cardhead"><h3>⚠️ Open Conflicts</h3></div><div class="cardbody" id="summary-conflicts"></div></div>
+  </section>
+
+  <section class="view" id="v-safety">
+    <div class="sechead"><h2>🦺 Safety &amp; 5S</h2><span class="desc">Toolbox talk, 5S walk, and observations for the day.</span></div>
+    <div class="card"><div class="cardhead"><h3>🚧 Today's Safety Topic</h3></div><div class="cardbody"><input class="f" id="safety-topic2" placeholder="e.g. Equipment operations, silica, fall protection"></div></div>
+    <div class="card">
+      <div class="cardhead"><h3>Toolbox Talk / JHA — Mark Complete per Trade</h3><div class="spacer"></div><button class="btn sm" id="jha-all">✓ Mark All Done</button><button class="btn sm solid" id="jha-add">+ Add Entry</button></div>
+      <div class="cardbody">
+        <div class="formpanel" id="jha-form"><h4>+ New JHA / Toolbox Talk Entry</h4>
+          <div class="fieldgrid" style="grid-template-columns:1fr 1fr;"><div class="field"><label>Trade</label><select class="f" id="jha-trade"></select></div><div class="field"><label>Foreman / Supt</label><input class="f" id="jha-foreman"></div></div>
+          <div class="formactions"><button class="btn solid sm" id="jha-save">Add</button><button class="btn sm" data-close="jha-form">Cancel</button></div>
+        </div>
+        <div id="jha-list"></div>
+      </div>
+    </div>
+    <div class="card"><div class="cardhead"><h3>5S Daily Checklist</h3><div class="spacer"></div><button class="btn sm solid" id="fives-add">+ Add Row</button></div>
+      <div class="cardbody" style="padding:0;"><div class="tblwrap" style="border:0;box-shadow:none;border-radius:0;"><table id="fives-table"></table></div></div></div>
+    <div class="card"><div class="cardhead"><h3>Safety Observations / Near Misses</h3><div class="spacer"></div><button class="btn sm solid" id="obs-add">+ Log Observation</button></div>
+      <div class="cardbody">
+        <div class="formpanel" id="obs-form"><h4>+ Log Observation</h4>
+          <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;"><div class="field"><label>Trade</label><select class="f" id="obs-trade"></select></div><div class="field"><label>Observer</label><input class="f" id="obs-observer"></div><div class="field"><label>Type</label><select class="f" id="obs-type"><option>Near Miss</option><option>Unsafe Condition</option><option>Unsafe Act</option><option>Positive Observation</option><option>Incident</option></select></div></div>
+          <div class="field" style="margin-top:10px;"><label>Description</label><textarea class="f" id="obs-desc"></textarea></div>
+          <div class="field" style="margin-top:10px;"><label>Corrective Action</label><textarea class="f" id="obs-corr"></textarea></div>
+          <div class="formactions"><button class="btn solid sm" id="obs-save">Log</button><button class="btn sm" data-close="obs-form">Cancel</button></div>
+        </div>
+        <div class="tblwrap" style="border:0;box-shadow:none;"><table id="obs-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-attendance">
+    <div class="sechead"><h2>👥 Attendance</h2><span class="desc">Click a status dot to cycle: Here → Remote/Teams → Absent.</span><div class="spacer"></div><button class="btn solid" id="att-add">+ Add Person</button></div>
+    <div class="formpanel" id="att-form"><h4>+ Add Attendee</h4>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 150px;"><div class="field"><label>Name</label><input class="f" id="att-name"></div><div class="field"><label>Company / Trade</label><select class="f" id="att-company"></select></div><div class="field"><label>Status</label><select class="f" id="att-status"><option value="here">Here</option><option value="remote">Remote / Teams</option><option value="absent">Absent</option></select></div></div>
+      <div class="formactions"><button class="btn solid sm" id="att-save">Add</button><button class="btn sm" data-close="att-form">Cancel</button></div>
+    </div>
+    <div class="people" id="att-list"></div>
+  </section>
+
+  <section class="view" id="v-manpower">
+    <div class="sechead"><h2>💪 Manpower</h2><span class="desc">Head counts by trade — feeds the Man Hours log.</span><div class="spacer"></div><button class="btn solid" id="mp-add">+ Add Trade</button></div>
+    <div class="tblwrap"><table id="mp-table"></table></div>
+  </section>
+
+  <section class="view" id="v-coord">
+    <div class="sechead"><h2>🏗 Trade Coordination</h2><span class="desc">Today's activities by building. Add a task under any trade block.</span></div>
+    <div class="subtabs" id="coord-subtabs"></div>
+    <div id="coord-blocks"></div>
+  </section>
+
+  <section class="view" id="v-conflicts">
+    <div class="sechead"><h2>⚠️ Conflicts &amp; Issues</h2><div class="spacer"></div><button class="btn solid" id="cf-add">+ Log Conflict</button></div>
+    <div class="formpanel" id="cf-form"><h4>+ New Conflict / Issue</h4>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;"><div class="field"><label>Building</label><select class="f" id="cf-building"></select></div><div class="field"><label>Trade</label><select class="f" id="cf-trade"></select></div><div class="field"><label>Location</label><input class="f" id="cf-location"></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Type</label><select class="f" id="cf-type"><option>RFI Pending</option><option>MEP Conflict</option><option>Embed/Relief Angle</option><option>Access Needed</option><option>Material Missing</option><option>Sequencing</option><option>Safety</option><option>Permit/Dig Permit</option><option>Detention Hardware</option><option>Other</option></select></div><div class="field"><label>Blocking?</label><select class="f" id="cf-blocking"><option>Yes</option><option>No</option><option>Partial</option></select></div><div class="field"><label>Target Resolution</label><input class="f" id="cf-target" placeholder="date / note"></div></div>
+      <div class="field" style="margin-top:10px;"><label>Description</label><textarea class="f" id="cf-desc"></textarea></div>
+      <div class="formactions"><button class="btn solid sm" id="cf-save">Log</button><button class="btn sm" data-close="cf-form">Cancel</button></div>
+    </div>
+    <div class="tblwrap"><table id="cf-table"></table></div>
+  </section>
+
+  <section class="view" id="v-inspections">
+    <div class="sechead"><h2>🔍 Inspections</h2><div class="spacer"></div><button class="btn solid" id="ins-add">+ Log Inspection</button></div>
+    <div class="formpanel" id="ins-form"><h4>+ New Inspection</h4>
+      <div class="fieldgrid" style="grid-template-columns:130px 1fr 1fr 1fr;"><div class="field"><label>Date</label><input type="date" class="f" id="ins-date"></div><div class="field"><label>Building</label><select class="f" id="ins-building"></select></div><div class="field"><label>Trade</label><select class="f" id="ins-trade"></select></div><div class="field"><label>Inspection Type</label><select class="f" id="ins-type"><option>UES</option><option>Inspection</option><option>In-Wall</option><option>Overhead</option><option>Concrete</option><option>Compaction</option><option>Electrical Room</option><option>Pressure Test</option><option>Detention Security</option><option>Reinspection</option><option>Other</option></select></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 150px;margin-top:10px;"><div class="field"><label>Location</label><input class="f" id="ins-location"></div><div class="field"><label>Notes / Time</label><input class="f" id="ins-notes"></div><div class="field"><label>Status</label><select class="f" id="ins-status"><option>Scheduled</option><option>In Progress</option><option>Complete</option><option>Failed</option></select></div></div>
+      <div class="formactions"><button class="btn solid sm" id="ins-save">Add</button><button class="btn sm" data-close="ins-form">Cancel</button></div>
+    </div>
+    <div class="tblwrap"><table id="ins-table"></table></div>
+  </section>
+
+  <section class="view" id="v-trades">
+    <div class="sechead"><h2>🏢 Manage Trades</h2><span class="desc">Trades here appear in every dropdown across the app.</span><div class="spacer"></div><button class="btn solid" id="tr-add">+ Add Trade</button></div>
+    <div class="formpanel" id="tr-form"><h4>+ New Trade</h4><div class="field"><label>Trade / Company Name</label><input class="f" id="tr-name" placeholder="e.g. Century Steel"></div><div class="formactions"><button class="btn solid sm" id="tr-save">Add Trade</button><button class="btn sm" data-close="tr-form">Cancel</button></div></div>
+    <div class="card"><div class="cardbody" id="tr-list"></div></div>
+  </section>
+
+  <section class="view" id="v-manhours">
+    <div class="printonly" id="print-mh-head"></div>
+    <div class="sechead"><h2>⏱ Man Hours Log</h2><div class="spacer"></div><button class="btn" id="mh-pdf">⬇ Export PDF</button><button class="btn brass" id="mh-log">📌 Log Today</button></div>
+    <div class="card"><div class="cardbody">
+      <div class="fieldgrid" style="grid-template-columns:200px 200px;"><div class="field"><label>Default Hrs / Worker / Day</label><input type="number" class="f" id="mh-hrs" value="8" min="0" step="0.5"></div><div class="field"><label>Week Starting</label><input type="date" class="f" id="mh-week"></div></div>
+      <p class="hint" style="margin-top:10px;">Click <b>📌 Log Today</b> after the meeting to capture today's manpower as man hours.</p>
+    </div></div>
+    <div class="card"><div class="cardhead"><h3>Daily Man Hour Entries</h3><div class="spacer"></div><button class="btn sm danger" id="mh-clear">Clear All</button></div>
+      <div class="cardbody" style="padding:0;"><div class="tblwrap" style="border:0;box-shadow:none;border-radius:0;"><table id="mh-table"></table></div></div></div>
+  </section>
+</main>
+
+<div class="overlay" id="newday-overlay">
+  <div class="modal">
+    <div class="mh"><h3>🗓 Start New Day</h3><p>Choose what to carry forward. Unchecked items will be cleared.</p></div>
+    <div class="mb">
+      <div class="field" style="margin-bottom:14px;"><label>New Date</label><input type="date" class="f" id="nd-date"></div>
+      <label class="carry"><input type="checkbox" id="nd-roster" checked><span><span class="ct">Keep Attendance Roster</span><span class="cd">Keeps all people — resets everyone to Absent so you mark fresh each morning.</span></span></label>
+      <label class="carry"><input type="checkbox" id="nd-manpower"><span><span class="ct">Keep Manpower Numbers</span><span class="cd">Carry forward yesterday's counts as a starting point.</span></span></label>
+      <label class="carry"><input type="checkbox" id="nd-tasks" checked><span><span class="ct">Carry Over Incomplete Tasks</span><span class="cd">Keeps tasks not marked Complete — clears completed ones.</span></span></label>
+      <label class="carry"><input type="checkbox" id="nd-conflicts" checked><span><span class="ct">Keep Open Conflicts</span><span class="cd">Carry unresolved conflicts forward.</span></span></label>
+      <label class="carry"><input type="checkbox" id="nd-inspections" checked><span><span class="ct">Keep Open Inspections</span><span class="cd">Carry incomplete inspections forward.</span></span></label>
+    </div>
+    <div class="mf"><button class="btn" id="nd-cancel">Cancel</button><button class="btn brass" id="nd-go">Start New Day →</button></div>
+  </div>
+</div>
+
+<input type="file" id="filein" accept="application/json" style="display:none">
+
+<script>
+(function(){
+"use strict";
+var BUILDINGS=["Sitewide","Courthouse","Detention Center","Sheriff's Office"];
+var STORE="ccjc_coord_v1";
+var TABS=[{id:"summary",label:"📋 Summary"},{id:"safety",label:"🦺 Safety & 5S"},{id:"attendance",label:"👥 Attendance"},{id:"manpower",label:"💪 Manpower"},{id:"coord",label:"🏗 Trade Coord"},{id:"conflicts",label:"⚠️ Conflicts"},{id:"inspections",label:"🔍 Inspections"},{id:"trades",label:"🏢 Manage Trades"},{id:"manhours",label:"⏱ Man Hours"}];
+var FIVES=["Sort","Set in Order","Shine","Standardize","Sustain"];
+var MP=["supv","journ","labor","app","safety"],MPL=["Supv","Journ","Labor","App","Safety"];
+
+var canLS=(function(){try{localStorage.setItem("__t","1");localStorage.removeItem("__t");return true;}catch(e){return false;}})();
+var mem=null;
+function todayKey(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10);}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function fresh(){return{date:todayKey(),facilitator:"",safetyTopic:"",timer:{running:false,elapsed:0,startedAt:0},trades:["Century Steel","Ace Mechanical","Guardian Electronic","Site Concrete","Detention Specialties"],attendance:[],manpower:[],jha:[],fives:[],observations:[],coord:[],conflicts:[],inspections:[],manhours:{defaultHrs:8,weekStarting:"",entries:[]}};}
+function load(){if(!canLS)return mem||(mem=fresh());try{var s=JSON.parse(localStorage.getItem(STORE));return s&&s.trades?s:fresh();}catch(e){return fresh();}}
+var S=load();var dirty=false,st;
+function save(){if(canLS){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){mem=S;}}else mem=S;dirty=false;paintSave();}
+function touch(){dirty=true;paintSave();clearTimeout(st);st=setTimeout(save,400);}
+function paintSave(){var c=el("savechip");c.classList.toggle("dirty",dirty);c.querySelector("span:nth-child(2)").textContent=dirty?"Saving…":"Saved";el("savemode").textContent=canLS?"· Local only":"· Session only";}
+
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function opts(arr,sel){return arr.map(function(o){return "<option"+(o===sel?" selected":"")+">"+esc(o)+"</option>";}).join("");}
+function tradeOpts(sel){return "<option value=''>—</option>"+opts(S.trades,sel);}
+function autoGrow(t){t.style.height="auto";t.style.height=t.scrollHeight+"px";}
+
+var current="summary";
+function renderTabs(){
+  var counts={conflicts:S.conflicts.filter(function(c){return c.status!=="Complete";}).length,inspections:S.inspections.filter(function(i){return i.status!=="Complete";}).length,attendance:S.attendance.length,coord:S.coord.length};
+  el("tabs").innerHTML=TABS.map(function(t){var b=counts[t.id]!=null?"<span class='badge'>"+counts[t.id]+"</span>":"";return "<button class='tab"+(t.id===current?" on":"")+"' data-tab='"+t.id+"'>"+t.label+b+"</button>";}).join("");
+}
+el("tabs").addEventListener("click",function(e){var b=e.target.closest(".tab");if(!b)return;current=b.dataset.tab;renderTabs();showView();});
+function showView(){document.querySelectorAll(".view").forEach(function(v){v.classList.remove("on");});el("v-"+current).classList.add("on");window.scrollTo(0,0);if(current==="summary")renderSummary();if(current==="coord")document.querySelectorAll("[data-coordtext]").forEach(autoGrow);}
+
+function bindHeader(){
+  el("f-date").value=S.date;el("f-facilitator").value=S.facilitator;el("f-topic").value=S.safetyTopic;el("safety-topic2").value=S.safetyTopic;
+  el("f-date").oninput=function(){S.date=this.value;touch();};
+  el("f-facilitator").oninput=function(){S.facilitator=this.value;touch();};
+  el("f-topic").oninput=function(){S.safetyTopic=this.value;el("safety-topic2").value=this.value;touch();};
+  el("safety-topic2").oninput=function(){S.safetyTopic=this.value;el("f-topic").value=this.value;touch();};
+}
+
+var tick;
+function fmtT(s){var m=Math.floor(s/60),ss=s%60;return (m<10?"0":"")+m+":"+(ss<10?"0":"")+ss;}
+function curElapsed(){return S.timer.elapsed+(S.timer.running?Math.floor((Date.now()-S.timer.startedAt)/1000):0);}
+function paintTimer(){el("timer-val").textContent=fmtT(curElapsed());el("timer-toggle").textContent=S.timer.running?"⏸":"▶";}
+function startTick(){clearInterval(tick);tick=setInterval(paintTimer,1000);}
+el("timer-toggle").onclick=function(){if(S.timer.running){S.timer.elapsed=curElapsed();S.timer.running=false;clearInterval(tick);}else{S.timer.startedAt=Date.now();S.timer.running=true;startTick();}paintTimer();touch();};
+el("timer-reset").onclick=function(){S.timer={running:false,elapsed:0,startedAt:0};clearInterval(tick);paintTimer();touch();};
+
+function renderAttendance(){
+  var wrap=el("att-list");
+  if(!S.attendance.length){wrap.innerHTML="<div class='emptymsg'>No attendees yet. Click <b>+ Add Person</b>.</div>";return;}
+  wrap.innerHTML=S.attendance.map(function(p){return "<div class='person'><span class='statusdot "+p.status+"' data-id='"+p.id+"'></span><div><div class='nm'>"+esc(p.name)+"</div><div class='co'>"+esc(p.company||"")+"</div></div><button class='x' data-del='"+p.id+"'>✕</button></div>";}).join("");
+}
+el("att-list").addEventListener("click",function(e){
+  var dot=e.target.closest(".statusdot");
+  if(dot){var p=S.attendance.find(function(x){return x.id===dot.dataset.id;});p.status=p.status==="here"?"remote":p.status==="remote"?"absent":"here";renderAttendance();touch();return;}
+  var d=e.target.closest("[data-del]");if(d){S.attendance=S.attendance.filter(function(x){return x.id!==d.dataset.del;});renderAttendance();renderTabs();touch();}
+});
+el("att-add").onclick=function(){el("att-company").innerHTML=tradeOpts();toggleForm("att-form",true);el("att-name").focus();};
+el("att-save").onclick=function(){var n=el("att-name").value.trim();if(!n){el("att-name").focus();return;}S.attendance.push({id:uid(),name:n,company:el("att-company").value,status:el("att-status").value});el("att-name").value="";toggleForm("att-form",false);renderAttendance();renderTabs();touch();};
+
+function renderManpower(){
+  var head="<thead><tr><th>Trade</th>"+MPL.map(function(l){return "<th class='num'>"+l+"</th>";}).join("")+"<th class='num'>Total</th><th></th></tr></thead>";
+  var tot=[0,0,0,0,0],body="<tbody>";
+  if(!S.manpower.length)body+="<tr><td colspan='8'><div class='emptymsg'>No trades added. Click <b>+ Add Trade</b>.</div></td></tr>";
+  S.manpower.forEach(function(r){
+    var rt=0;MP.forEach(function(k,i){rt+=(+r[k]||0);tot[i]+=(+r[k]||0);});
+    body+="<tr><td><select class='f' data-mp='"+r.id+"' data-k='trade' style='min-width:150px'>"+tradeOpts(r.trade)+"</select></td>";
+    MP.forEach(function(k){body+="<td class='num'><input type='number' min='0' class='f' style='width:64px;text-align:center;padding:6px' data-mp='"+r.id+"' data-k='"+k+"' value='"+(r[k]||0)+"'></td>";});
+    body+="<td class='num'><b>"+rt+"</b></td><td class='num'><button class='btn sm danger' data-delmp='"+r.id+"'>✕</button></td></tr>";
+  });
+  if(S.manpower.length){var gt=tot.reduce(function(a,b){return a+b;},0);body+="<tr class='totrow'><td>TOTAL</td>"+tot.map(function(t){return "<td class='num'>"+t+"</td>";}).join("")+"<td class='num'>"+gt+"</td><td></td></tr>";}
+  body+="</tbody>";el("mp-table").innerHTML=head+body;
+}
+el("mp-add").onclick=function(){S.manpower.push({id:uid(),trade:"",supv:0,journ:0,labor:0,app:0,safety:0});renderManpower();touch();};
+el("mp-table").addEventListener("input",function(e){var t=e.target;if(!t.dataset.mp)return;var r=S.manpower.find(function(x){return x.id===t.dataset.mp;});r[t.dataset.k]=t.dataset.k==="trade"?t.value:(+t.value||0);if(t.dataset.k!=="trade")renderManpower();touch();});
+el("mp-table").addEventListener("change",function(e){var t=e.target;if(t.dataset.k==="trade"){S.manpower.find(function(x){return x.id===t.dataset.mp;}).trade=t.value;touch();}});
+el("mp-table").addEventListener("click",function(e){var d=e.target.closest("[data-delmp]");if(d){S.manpower=S.manpower.filter(function(x){return x.id!==d.dataset.delmp;});renderManpower();touch();}});
+
+var coordBuilding="Sitewide";
+function statusSel(v,ns,id){return "<select class='statussel' data-v='"+v+"' data-statusns='"+ns+"' data-statusid='"+id+"'>"+opts(["Planned","Active","Blocked","Complete"],v)+"</select>";}
+function renderCoord(){
+  el("coord-subtabs").innerHTML=BUILDINGS.map(function(b){var n=S.coord.filter(function(t){return t.building===b;}).length;return "<button class='subtab"+(b===coordBuilding?" on":"")+"' data-cb='"+esc(b)+"'>"+esc(b)+"<span class='b'>"+n+"</span></button>";}).join("");
+  var blocks=el("coord-blocks");
+  if(!S.trades.length){blocks.innerHTML="<div class='card'><div class='emptymsg'>Add trades in <b>Manage Trades</b> first.</div></div>";return;}
+  blocks.innerHTML=S.trades.map(function(tr){
+    var tasks=S.coord.filter(function(t){return t.building===coordBuilding&&t.trade===tr;});
+    var rows=tasks.length?tasks.map(function(t){return "<div class='task'>"+statusSel(t.status,"coord",t.id)+"<textarea class='tx' rows='1' data-coordtext='"+t.id+"'>"+esc(t.text)+"</textarea><button class='x' data-coorddel='"+t.id+"'>✕</button></div>";}).join(""):"<div class='notask'>No tasks yet for "+esc(tr)+" in "+esc(coordBuilding)+".</div>";
+    return "<div class='tradeblock'><div class='bh'><span class='nm'>"+esc(tr)+"</span><div class='spacer'></div><button class='btn sm' data-coordadd='"+esc(tr)+"'>+ Add Task</button></div>"+rows+"</div>";
+  }).join("");
+  document.querySelectorAll("[data-coordtext]").forEach(autoGrow);
+}
+el("coord-subtabs").addEventListener("click",function(e){var b=e.target.closest("[data-cb]");if(b){coordBuilding=b.dataset.cb;renderCoord();}});
+el("coord-blocks").addEventListener("click",function(e){
+  var a=e.target.closest("[data-coordadd]");
+  if(a){S.coord.push({id:uid(),building:coordBuilding,trade:a.dataset.coordadd,text:"",status:"Planned"});renderCoord();renderTabs();touch();var all=document.querySelectorAll("[data-coordtext]");if(all.length)all[all.length-1].focus();return;}
+  var d=e.target.closest("[data-coorddel]");if(d){S.coord=S.coord.filter(function(x){return x.id!==d.dataset.coorddel;});renderCoord();renderTabs();touch();}
+});
+el("coord-blocks").addEventListener("input",function(e){var t=e.target;if(t.dataset.coordtext){S.coord.find(function(x){return x.id===t.dataset.coordtext;}).text=t.value;autoGrow(t);touch();}});
+
+document.addEventListener("change",function(e){
+  var s=e.target;if(!s.classList||!s.classList.contains("statussel"))return;
+  var ns=s.dataset.statusns,id=s.dataset.statusid,v=s.value;s.setAttribute("data-v",v);
+  if(ns==="coord")S.coord.find(function(x){return x.id===id;}).status=v;
+  if(ns==="conflict")S.conflicts.find(function(x){return x.id===id;}).status=v;
+  if(ns==="inspection")S.inspections.find(function(x){return x.id===id;}).status=v;
+  renderTabs();touch();
+});
+
+function renderConflicts(){
+  var head="<thead><tr><th>Building</th><th>Trade</th><th>Location</th><th>Type</th><th>Description</th><th>Blocking?</th><th>Target Res.</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.conflicts.length)body+="<tr><td colspan='9'><div class='emptymsg'>✅ No conflicts logged.</div></td></tr>";
+  S.conflicts.forEach(function(c){body+="<tr><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.location)+"</td><td>"+esc(c.type)+"</td><td>"+esc(c.description)+"</td><td class='num'>"+esc(c.blocking)+"</td><td>"+esc(c.target)+"</td><td>"+statusSelC(c.status,"conflict",c.id)+"</td><td class='num'><button class='btn sm danger' data-delcf='"+c.id+"'>✕</button></td></tr>";});
+  body+="</tbody>";el("cf-table").innerHTML=head+body;
+}
+function statusSelC(v,ns,id){return "<select class='statussel' data-v='"+v+"' data-statusns='"+ns+"' data-statusid='"+id+"'>"+opts(["Planned","Active","Blocked","Complete"],v)+"</select>";}
+el("cf-add").onclick=function(){el("cf-building").innerHTML=opts(BUILDINGS,"Sitewide");el("cf-trade").innerHTML=tradeOpts();toggleForm("cf-form",true);};
+el("cf-save").onclick=function(){var desc=el("cf-desc").value.trim();if(!desc){el("cf-desc").focus();return;}S.conflicts.push({id:uid(),building:el("cf-building").value,trade:el("cf-trade").value,location:el("cf-location").value,type:el("cf-type").value,blocking:el("cf-blocking").value,description:desc,target:el("cf-target").value,status:"Planned"});["cf-location","cf-desc","cf-target"].forEach(function(i){el(i).value="";});toggleForm("cf-form",false);renderConflicts();renderTabs();touch();};
+el("cf-table").addEventListener("click",function(e){var d=e.target.closest("[data-delcf]");if(d){S.conflicts=S.conflicts.filter(function(x){return x.id!==d.dataset.delcf;});renderConflicts();renderTabs();touch();}});
+
+function renderInspections(){
+  var head="<thead><tr><th>Date</th><th>Building</th><th>Trade</th><th>Type</th><th>Location</th><th>Notes / Time</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.inspections.length)body+="<tr><td colspan='8'><div class='emptymsg'>No inspections logged.</div></td></tr>";
+  S.inspections.forEach(function(c){var arr=["Scheduled","In Progress","Complete","Failed"];body+="<tr><td class='mono'>"+esc(c.date)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.type)+"</td><td>"+esc(c.location)+"</td><td>"+esc(c.notes)+"</td><td><select class='statussel' data-v='"+c.status+"' data-statusns='inspection' data-statusid='"+c.id+"'>"+opts(arr,c.status)+"</select></td><td class='num'><button class='btn sm danger' data-delins='"+c.id+"'>✕</button></td></tr>";});
+  body+="</tbody>";el("ins-table").innerHTML=head+body;
+}
+el("ins-add").onclick=function(){el("ins-building").innerHTML=opts(BUILDINGS,"Sitewide");el("ins-trade").innerHTML=tradeOpts();el("ins-date").value=S.date;toggleForm("ins-form",true);};
+el("ins-save").onclick=function(){S.inspections.push({id:uid(),date:el("ins-date").value||S.date,building:el("ins-building").value,trade:el("ins-trade").value,type:el("ins-type").value,location:el("ins-location").value,notes:el("ins-notes").value,status:el("ins-status").value});["ins-location","ins-notes"].forEach(function(i){el(i).value="";});toggleForm("ins-form",false);renderInspections();renderTabs();touch();};
+el("ins-table").addEventListener("click",function(e){var d=e.target.closest("[data-delins]");if(d){S.inspections=S.inspections.filter(function(x){return x.id!==d.dataset.delins;});renderInspections();renderTabs();touch();}});
+
+function renderJHA(){
+  var w=el("jha-list");
+  if(!S.jha.length){w.innerHTML="<div class='emptymsg'>No entries. Click <b>+ Add Entry</b>.</div>";return;}
+  w.innerHTML="<div class='people'>"+S.jha.map(function(j){return "<div class='person'><span class='statusdot "+(j.done?"here":"absent")+"' data-jha='"+j.id+"' title='Toggle complete'></span><div><div class='nm'>"+esc(j.trade)+"</div><div class='co'>"+esc(j.foreman||"")+(j.done?" · ✓ done":"")+"</div></div><button class='x' data-jhadel='"+j.id+"'>✕</button></div>";}).join("")+"</div>";
+}
+el("jha-add").onclick=function(){el("jha-trade").innerHTML=tradeOpts();toggleForm("jha-form",true);};
+el("jha-save").onclick=function(){if(!el("jha-trade").value){el("jha-trade").focus();return;}S.jha.push({id:uid(),trade:el("jha-trade").value,foreman:el("jha-foreman").value,done:false});el("jha-foreman").value="";toggleForm("jha-form",false);renderJHA();touch();};
+el("jha-all").onclick=function(){S.jha.forEach(function(j){j.done=true;});renderJHA();touch();};
+el("jha-list").addEventListener("click",function(e){var t=e.target.closest("[data-jha]");if(t){var j=S.jha.find(function(x){return x.id===t.dataset.jha;});j.done=!j.done;renderJHA();touch();return;}var d=e.target.closest("[data-jhadel]");if(d){S.jha=S.jha.filter(function(x){return x.id!==d.dataset.jhadel;});renderJHA();touch();}});
+
+function renderFives(){
+  var head="<thead><tr><th>5S Category</th><th>Check Item</th><th>Area / Trade</th><th>Status</th><th>Notes</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.fives.length)body+="<tr><td colspan='6'><div class='emptymsg'>No 5S rows. Click <b>+ Add Row</b>.</div></td></tr>";
+  S.fives.forEach(function(r){body+="<tr><td><select class='f' data-fs='"+r.id+"' data-k='category'>"+opts(FIVES,r.category)+"</select></td><td><input class='f' data-fs='"+r.id+"' data-k='item' value='"+esc(r.item)+"'></td><td><input class='f' data-fs='"+r.id+"' data-k='area' value='"+esc(r.area)+"'></td><td><select class='f' data-fs='"+r.id+"' data-k='status'>"+opts(["Open","OK","Needs Action"],r.status)+"</select></td><td><input class='f' data-fs='"+r.id+"' data-k='notes' value='"+esc(r.notes)+"'></td><td class='num'><button class='btn sm danger' data-delfs='"+r.id+"'>✕</button></td></tr>";});
+  body+="</tbody>";el("fives-table").innerHTML=head+body;
+}
+el("fives-add").onclick=function(){S.fives.push({id:uid(),category:"Sort",item:"",area:"",status:"Open",notes:""});renderFives();touch();};
+el("fives-table").addEventListener("input",function(e){var t=e.target;if(t.dataset.fs){S.fives.find(function(x){return x.id===t.dataset.fs;})[t.dataset.k]=t.value;touch();}});
+el("fives-table").addEventListener("change",function(e){var t=e.target;if(t.dataset.fs){S.fives.find(function(x){return x.id===t.dataset.fs;})[t.dataset.k]=t.value;touch();}});
+el("fives-table").addEventListener("click",function(e){var d=e.target.closest("[data-delfs]");if(d){S.fives=S.fives.filter(function(x){return x.id!==d.dataset.delfs;});renderFives();touch();}});
+
+function renderObs(){
+  var head="<thead><tr><th>Trade</th><th>Observer</th><th>Type</th><th>Description</th><th>Corrective Action</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.observations.length)body+="<tr><td colspan='6'><div class='emptymsg'>No observations logged.</div></td></tr>";
+  S.observations.forEach(function(o){body+="<tr><td>"+esc(o.trade)+"</td><td>"+esc(o.observer)+"</td><td>"+esc(o.type)+"</td><td>"+esc(o.description)+"</td><td>"+esc(o.corrective)+"</td><td class='num'><button class='btn sm danger' data-delobs='"+o.id+"'>✕</button></td></tr>";});
+  body+="</tbody>";el("obs-table").innerHTML=head+body;
+}
+el("obs-add").onclick=function(){el("obs-trade").innerHTML=tradeOpts();toggleForm("obs-form",true);};
+el("obs-save").onclick=function(){var d=el("obs-desc").value.trim();if(!d){el("obs-desc").focus();return;}S.observations.push({id:uid(),trade:el("obs-trade").value,observer:el("obs-observer").value,type:el("obs-type").value,description:d,corrective:el("obs-corr").value});["obs-observer","obs-desc","obs-corr"].forEach(function(i){el(i).value="";});toggleForm("obs-form",false);renderObs();touch();};
+el("obs-table").addEventListener("click",function(e){var d=e.target.closest("[data-delobs]");if(d){S.observations=S.observations.filter(function(x){return x.id!==d.dataset.delobs;});renderObs();touch();}});
+
+function renderTrades(){
+  var w=el("tr-list");
+  if(!S.trades.length){w.innerHTML="<div class='emptymsg'>No trades yet. Click <b>+ Add Trade</b>.</div>";return;}
+  w.innerHTML="<div class='people'>"+S.trades.map(function(t){return "<div class='person'><span class='statusdot here' style='cursor:default'></span><div><div class='nm'>"+esc(t)+"</div></div><button class='x' data-deltr=\""+esc(t)+"\">✕</button></div>";}).join("")+"</div>";
+}
+el("tr-add").onclick=function(){toggleForm("tr-form",true);el("tr-name").focus();};
+el("tr-save").onclick=function(){var n=el("tr-name").value.trim();if(!n)return;if(S.trades.indexOf(n)<0)S.trades.push(n);el("tr-name").value="";toggleForm("tr-form",false);renderTrades();touch();};
+el("tr-name").addEventListener("keydown",function(e){if(e.key==="Enter")el("tr-save").click();});
+el("tr-list").addEventListener("click",function(e){var d=e.target.closest("[data-deltr]");if(d){S.trades=S.trades.filter(function(x){return x!==d.dataset.deltr;});renderTrades();touch();}});
+
+function renderManhours(){
+  el("mh-hrs").value=S.manhours.defaultHrs;el("mh-week").value=S.manhours.weekStarting;
+  var head="<thead><tr><th>Date</th><th>Trade</th><th class='num'>Supv</th><th class='num'>Journ</th><th class='num'>Labor</th><th class='num'>App</th><th class='num'>Safety</th><th class='num'>Workers</th><th class='num'>Hrs/Wkr</th><th class='num'>Man Hours</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.manhours.entries.length)body+="<tr><td colspan='11'><div class='emptymsg'>No entries yet — click <b>📌 Log Today</b> to capture today's manpower as man hours.</div></td></tr>";
+  var gm=0;
+  S.manhours.entries.forEach(function(e){gm+=e.manHours;body+="<tr><td class='mono'>"+esc(e.date)+"</td><td>"+esc(e.trade)+"</td>"+["supv","journ","labor","app","safety"].map(function(k){return "<td class='num'>"+(e[k]||0)+"</td>";}).join("")+"<td class='num'>"+e.workers+"</td><td class='num'>"+e.hrs+"</td><td class='num'><b>"+e.manHours+"</b></td><td class='num'><button class='btn sm danger' data-delmh='"+e.id+"'>✕</button></td></tr>";});
+  if(S.manhours.entries.length)body+="<tr class='totrow'><td colspan='9'>TOTAL MAN HOURS</td><td class='num'>"+gm+"</td><td></td></tr>";
+  body+="</tbody>";el("mh-table").innerHTML=head+body;
+}
+el("mh-hrs").oninput=function(){S.manhours.defaultHrs=+this.value||0;touch();};
+el("mh-week").oninput=function(){S.manhours.weekStarting=this.value;touch();};
+el("mh-log").onclick=function(){if(!S.manpower.length){alert("Add manpower counts first (Manpower tab).");return;}var hrs=S.manhours.defaultHrs||8,n=0;S.manpower.forEach(function(r){var workers=["supv","journ","labor","app","safety"].reduce(function(a,k){return a+(+r[k]||0);},0);if(workers===0||!r.trade)return;S.manhours.entries.push({id:uid(),date:S.date,trade:r.trade,supv:+r.supv||0,journ:+r.journ||0,labor:+r.labor||0,app:+r.app||0,safety:+r.safety||0,workers:workers,hrs:hrs,manHours:workers*hrs});n++;});renderManhours();touch();if(n===0)alert("No manpower with counts to log.");};
+el("mh-clear").onclick=function(){if(confirm("Clear all man hour entries?")){S.manhours.entries=[];renderManhours();touch();}};
+el("mh-table").addEventListener("click",function(e){var d=e.target.closest("[data-delmh]");if(d){S.manhours.entries=S.manhours.entries.filter(function(x){return x.id!==d.dataset.delmh;});renderManhours();touch();}});
+
+function renderSummary(){
+  var here=S.attendance.filter(function(a){return a.status==="here";}).length,remote=S.attendance.filter(function(a){return a.status==="remote";}).length,absent=S.attendance.filter(function(a){return a.status==="absent";}).length;
+  var totalWorkers=S.manpower.reduce(function(a,r){return a+["supv","journ","labor","app","safety"].reduce(function(b,k){return b+(+r[k]||0);},0);},0);
+  var openCf=S.conflicts.filter(function(c){return c.status!=="Complete";}).length,blocking=S.conflicts.filter(function(c){return c.status!=="Complete"&&c.blocking==="Yes";}).length;
+  var openIns=S.inspections.filter(function(i){return i.status!=="Complete";}).length,openTasks=S.coord.filter(function(t){return t.status!=="Complete";}).length;
+  el("summary-stats").innerHTML=[["On-site manpower",totalWorkers,S.manpower.length+" trades"],["Attendance",here+" here",remote+" remote · "+absent+" absent"],["Open tasks",openTasks,S.coord.length+" total"],["Open conflicts",openCf,blocking+" blocking"],["Open inspections",openIns,""]].map(function(s){return "<div class='stat'><div class='k'>"+s[0]+"</div><div class='v'>"+s[1]+"</div><div class='sub'>"+s[2]+"</div></div>";}).join("");
+  el("summary-att").innerHTML=S.attendance.length?S.attendance.map(function(a){var col=a.status==="here"?"var(--done)":a.status==="remote"?"var(--amber)":"#c3ccd4";return "<div class='a'><span class='d' style='background:"+col+"'></span>"+esc(a.name)+"</div>";}).join(""):"<span class='hint'>No attendees recorded.</span>";
+  var byTrade={};S.manpower.forEach(function(r){if(!r.trade)return;var t=byTrade[r.trade]||(byTrade[r.trade]={supv:0,journ:0,labor:0,app:0,safety:0});["supv","journ","labor","app","safety"].forEach(function(k){t[k]+=(+r[k]||0);});});
+  var keys=Object.keys(byTrade),mh="<thead><tr><th>Trade</th><th class='num'>Supv</th><th class='num'>Journ</th><th class='num'>Labor</th><th class='num'>App</th><th class='num'>Safety</th><th class='num'>Total</th></tr></thead><tbody>";
+  if(!keys.length)mh+="<tr><td colspan='7'><div class='emptymsg'>No manpower entered.</div></td></tr>";
+  var tot=[0,0,0,0,0];keys.forEach(function(k){var t=byTrade[k],rt=0;["supv","journ","labor","app","safety"].forEach(function(x,i){rt+=t[x];tot[i]+=t[x];});mh+="<tr><td>"+esc(k)+"</td><td class='num'>"+t.supv+"</td><td class='num'>"+t.journ+"</td><td class='num'>"+t.labor+"</td><td class='num'>"+t.app+"</td><td class='num'>"+t.safety+"</td><td class='num'><b>"+rt+"</b></td></tr>";});
+  if(keys.length)mh+="<tr class='totrow'><td>TOTAL</td>"+tot.map(function(t){return "<td class='num'>"+t+"</td>";}).join("")+"<td class='num'>"+tot.reduce(function(a,b){return a+b;},0)+"</td></tr>";
+  mh+="</tbody>";el("summary-manpower").innerHTML=mh;
+  var oc=S.conflicts.filter(function(c){return c.status!=="Complete";});
+  el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Building</th><th>Trade</th><th>Location</th><th>Type</th><th>Description</th><th>Blocking?</th></tr></thead><tbody>"+oc.map(function(c){return "<tr><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.location)+"</td><td>"+esc(c.type)+"</td><td>"+esc(c.description)+"</td><td class='num'>"+esc(c.blocking)+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
+  el("print-summary-head").innerHTML="<h1>CCJC Daily Trade Coordination — Meeting Summary</h1><div class='pm'>Yates–Metcon · "+esc(S.date)+" · Facilitator: "+esc(S.facilitator||"—")+"</div>";
+  el("print-mh-head").innerHTML="<h1>CCJC Man Hours Log</h1><div class='pm'>Yates–Metcon · Week starting "+esc(S.manhours.weekStarting||"—")+"</div>";
+}
+
+function toggleForm(id,on){var f=el(id);f.classList.toggle("on",on!=null?on:!f.classList.contains("on"));}
+document.addEventListener("click",function(e){var c=e.target.closest("[data-close]");if(c)toggleForm(c.dataset.close,false);});
+
+el("btn-newday").onclick=function(){var d=new Date(S.date);d.setDate(d.getDate()+1);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());el("nd-date").value=d.toISOString().slice(0,10);el("newday-overlay").classList.add("on");};
+el("nd-cancel").onclick=function(){el("newday-overlay").classList.remove("on");};
+el("newday-overlay").addEventListener("click",function(e){if(e.target===this)this.classList.remove("on");});
+el("nd-go").onclick=function(){
+  var keepRoster=el("nd-roster").checked,keepMp=el("nd-manpower").checked,keepTasks=el("nd-tasks").checked,keepCf=el("nd-conflicts").checked,keepIns=el("nd-inspections").checked;
+  var trades=S.trades.slice();
+  var attendance=keepRoster?S.attendance.map(function(a){return {id:uid(),name:a.name,company:a.company,status:"absent"};}):[];
+  var manpower=keepMp?S.manpower.map(function(r){return {id:uid(),trade:r.trade,supv:r.supv,journ:r.journ,labor:r.labor,app:r.app,safety:r.safety};}):[];
+  var coord=keepTasks?S.coord.filter(function(t){return t.status!=="Complete";}).map(function(t){return {id:uid(),building:t.building,trade:t.trade,text:t.text,status:t.status};}):[];
+  var conflicts=keepCf?S.conflicts.filter(function(c){return c.status!=="Complete";}).map(function(c){return Object.assign({},c,{id:uid()});}):[];
+  var inspections=keepIns?S.inspections.filter(function(i){return i.status!=="Complete";}).map(function(i){return Object.assign({},i,{id:uid()});}):[];
+  var mhKeep=S.manhours;
+  S=fresh();S.date=el("nd-date").value||todayKey();S.trades=trades;S.attendance=attendance;S.manpower=manpower;S.coord=coord;S.conflicts=conflicts;S.inspections=inspections;S.manhours=mhKeep;
+  el("newday-overlay").classList.remove("on");save();renderAll();
+};
+
+el("btn-export").onclick=function(){var blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ccjc-coordination-"+S.date+".json";a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},400);};
+el("btn-import").onclick=function(){el("filein").click();};
+el("filein").addEventListener("change",function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.trades)throw 0;S=d;save();renderAll();}catch(err){alert("That file isn't valid coordination JSON.");}};r.readAsText(f);e.target.value="";});
+function printAs(cls){document.body.classList.add(cls);window.print();setTimeout(function(){document.body.classList.remove(cls);},300);}
+window.addEventListener("afterprint",function(){document.body.classList.remove("print-summary","print-manhours");});
+el("btn-pdf-summary").onclick=function(){renderSummary();printAs("print-summary");};
+el("mh-pdf").onclick=function(){printAs("print-manhours");};
+
+function renderAll(){bindHeader();paintTimer();if(S.timer.running)startTick();renderTabs();renderAttendance();renderManpower();renderCoord();renderConflicts();renderInspections();renderJHA();renderFives();renderObs();renderTrades();renderManhours();renderSummary();showView();paintSave();}
+renderAll();
+})();
+</script>
+</body>
+</html>
