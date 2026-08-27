@@ -191,6 +191,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   .view{display:none !important;}
   body.print-summary #v-summary{display:block !important;}
   body.print-manhours #v-manhours{display:block !important;}
+  body.print-rollup #v-rollup{display:block !important;}
   .card,.tblwrap{box-shadow:none;border:1px solid #999;break-inside:avoid;}
   thead th{background:var(--navy) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .stat .v{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -198,6 +199,16 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   .printonly h1{font-family:'Barlow Semi Condensed';color:var(--navy);font-size:20px;}
   .printonly .pm{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink-soft);}
 }
+.escchip{display:inline-block;font-family:'IBM Plex Mono';font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:7px;margin-left:4px;vertical-align:middle;white-space:nowrap;background:var(--steel);color:#fff;}
+.esc-crit{background:var(--block);color:#fff;}
+.ppcbadge{display:inline-block;font-family:'IBM Plex Mono';font-size:12px;font-weight:600;padding:2px 9px;border-radius:9px;}
+.ppc-good{background:#dcefe2;color:var(--done);}
+.ppc-mid{background:#f6ead0;color:#8a6414;}
+.ppc-low{background:#f7d9d4;color:var(--block);}
+.trendbar{display:inline-block;height:9px;border-radius:3px;background:var(--steel);vertical-align:middle;min-width:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.trendrow{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;}
+.trendrow .tl{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink-soft);min-width:92px;}
+.trendrow .tv{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink);min-width:34px;}
 @media(max-width:820px){.brand{margin-right:0;}.hright{width:100%;}}
 </style>
 </head>
@@ -223,7 +234,8 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <div class="savechip" id="savechip"><span class="dot"></span><span>Saved</span><span class="mode" id="savemode">· Local only</span></div>
       <div class="hbtns">
         <button id="btn-newday" class="primary">🗓 New Day</button>
-        <button id="btn-pdf">⬇ PDF</button>
+        <button id="btn-pdf">⬇ Daily</button>
+        <button id="btn-weekly">⬇ Weekly</button>
         <button id="btn-export">↧ JSON</button>
         <button id="btn-import">↥ Import</button>
       </div>
@@ -298,7 +310,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;"><div class="field"><label>Building</label><select class="f" id="cf-building"></select></div><div class="field"><label>Trade</label><select class="f" id="cf-trade"></select></div><div class="field"><label>Location</label><input class="f" id="cf-location"></div></div>
       <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Type</label><select class="f" id="cf-type"><option>RFI Pending</option><option>MEP Conflict</option><option>Embed/Relief Angle</option><option>Access Needed</option><option>Material Missing</option><option>Sequencing</option><option>Safety</option><option>Permit/Dig Permit</option><option>Detention Hardware</option><option>Other</option></select></div><div class="field"><label>Blocking?</label><select class="f" id="cf-blocking"><option>Yes</option><option>No</option><option>Partial</option></select></div><div class="field"><label>Severity</label><select class="f" id="cf-severity"><option>Routine</option><option selected>Priority</option><option>Critical</option></select></div></div>
       <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Owner</label><input class="f" id="cf-owner" placeholder="who's accountable"></div><div class="field"><label>Needed By</label><input type="date" class="f" id="cf-neededby"></div><div class="field"><label>RFI / Ref #</label><input class="f" id="cf-ref" placeholder="RFI-000 / ref (optional)"></div></div>
-      <div class="fieldgrid" style="grid-template-columns:1fr;margin-top:10px;"><div class="field"><label>Notes / Target</label><input class="f" id="cf-target" placeholder="target date or note (optional)"></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr;margin-top:10px;"><div class="field"><label>Escalation</label><select class="f" id="cf-escalation"><option>None</option><option>RFI</option><option>PM</option><option>Owner / Architect</option><option>Critical-Path</option></select></div><div class="field"><label>Notes / Target</label><input class="f" id="cf-target" placeholder="target date or note (optional)"></div></div>
       <div class="field" style="margin-top:10px;"><label>Description</label><textarea class="f" id="cf-desc"></textarea></div>
       <div class="formactions"><button class="btn solid sm" id="cf-save">Log</button><button class="btn sm" data-close="cf-form">Cancel</button></div>
     </div>
@@ -313,6 +325,41 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <div class="formactions"><button class="btn solid sm" id="ins-save">Add</button><button class="btn sm" data-close="ins-form">Cancel</button></div>
     </div>
     <div class="tblwrap"><table id="ins-table"></table></div>
+  </section>
+
+  <section class="view" id="v-makeready">
+    <div class="sechead"><h2>🚧 Make-Ready &amp; Look-Ahead</h2><span class="desc">Clear constraints before work hits the floor. Track weekly PPC.</span><div class="spacer"></div><button class="btn solid" id="mr-add">+ Add Constraint</button></div>
+    <div class="formpanel" id="mr-form"><h4>+ New Constraint</h4>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;"><div class="field"><label>Building / Area</label><select class="f" id="mr-building"></select></div><div class="field"><label>Trade</label><select class="f" id="mr-trade"></select></div><div class="field"><label>Constraint Type</label><select class="f" id="mr-ctype"><option>Design / RFI</option><option>Submittal</option><option>Material</option><option>Predecessor Work</option><option>Inspection</option><option>Access / Area</option><option>Other</option></select></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 200px;margin-top:10px;"><div class="field"><label>Work It's Blocking</label><input class="f" id="mr-work" placeholder="what can't start until this clears"></div><div class="field"><label>Clear By</label><input type="date" class="f" id="mr-clearby"></div></div>
+      <div class="field" style="margin-top:10px;"><label>Notes</label><input class="f" id="mr-notes" placeholder="RFI #, PO #, who's chasing it (optional)"></div>
+      <div class="formactions"><button class="btn solid sm" id="mr-save">Add</button><button class="btn sm" data-close="mr-form">Cancel</button></div>
+    </div>
+    <div class="tblwrap"><table id="mr-table"></table></div>
+    <div class="card" style="margin-top:16px;"><div class="cardhead"><h3>📊 Percent Plan Complete (PPC)</h3><div class="spacer"></div><span class="desc">Committed tasks that actually got done this week.</span></div>
+      <div class="cardbody">
+        <div class="fieldgrid" style="grid-template-columns:150px 130px 130px 1fr auto;align-items:end;gap:12px;">
+          <div class="field"><label>Week Starting</label><input type="date" class="f" id="ppc-week"></div>
+          <div class="field"><label>Committed</label><input type="number" class="f" id="ppc-committed" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label>Completed</label><input type="number" class="f" id="ppc-completed" min="0" step="1" placeholder="0"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn sm" id="ppc-pull" title="Fill from Trade Coord tasks">↺ Pull from tasks</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn solid sm" id="ppc-log">Log Week</button></div>
+        </div>
+        <p class="hint" style="margin-top:4px;">Below 80% means commitments aren't reliable yet. Aim for 80%+.</p>
+        <div class="tblwrap" style="border:0;box-shadow:none;margin-top:8px;"><table id="ppc-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-rollup">
+    <div class="printonly" id="print-rollup-head"></div>
+    <div class="statgrid" id="rollup-kpis"></div>
+    <div class="card"><div class="cardhead"><h3>🔺 Critical &amp; Overdue Items</h3></div><div class="cardbody" id="rollup-critical"></div></div>
+    <div class="card"><div class="cardhead"><h3>⏳ Aging Open Conflicts</h3></div><div class="cardbody" id="rollup-aging"></div></div>
+    <div class="card"><div class="cardhead"><h3>🚧 Open Constraints (Make-Ready)</h3></div><div class="cardbody" id="rollup-constraints"></div></div>
+    <div class="card"><div class="cardhead"><h3>🔍 Upcoming Inspections</h3></div><div class="cardbody" id="rollup-inspections"></div></div>
+    <div class="card"><div class="cardhead"><h3>💪 Manpower Trend</h3></div><div class="cardbody" id="rollup-manpower"></div></div>
+    <div class="card"><div class="cardhead"><h3>📊 PPC Trend</h3></div><div class="cardbody" id="rollup-ppc"></div></div>
   </section>
 
   <section class="view" id="v-trades">
@@ -343,6 +390,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <label class="carry"><input type="checkbox" id="nd-tasks" checked><span><span class="ct">Carry Over Incomplete Tasks</span><span class="cd">Keeps tasks not marked Complete — clears completed ones.</span></span></label>
       <label class="carry"><input type="checkbox" id="nd-conflicts" checked><span><span class="ct">Keep Open Conflicts</span><span class="cd">Carry unresolved conflicts forward.</span></span></label>
       <label class="carry"><input type="checkbox" id="nd-inspections" checked><span><span class="ct">Keep Open Inspections</span><span class="cd">Carry incomplete inspections forward.</span></span></label>
+      <label class="carry"><input type="checkbox" id="nd-makeready" checked><span><span class="ct">Keep Open Constraints</span><span class="cd">Carry uncleared make-ready constraints forward.</span></span></label>
     </div>
     <div class="mf"><button class="btn" id="nd-cancel">Cancel</button><button class="btn brass" id="nd-go">Start New Day →</button></div>
   </div>
@@ -355,7 +403,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
 "use strict";
 var BUILDINGS=["Sitewide","Courthouse","Detention Center","Sheriff's Office"];
 var STORE="ccjc_coord_v2";var STORE_V1="ccjc_coord_v1";
-var TABS=[{id:"summary",label:"📋 Summary"},{id:"safety",label:"🦺 Safety & 5S"},{id:"attendance",label:"👥 Attendance"},{id:"manpower",label:"💪 Manpower"},{id:"coord",label:"🏗 Trade Coord"},{id:"conflicts",label:"⚠️ Conflicts"},{id:"inspections",label:"🔍 Inspections"},{id:"trades",label:"🏢 Manage Trades"},{id:"manhours",label:"⏱ Man Hours"}];
+var TABS=[{id:"summary",label:"📋 Summary"},{id:"safety",label:"🦺 Safety & 5S"},{id:"attendance",label:"👥 Attendance"},{id:"manpower",label:"💪 Manpower"},{id:"coord",label:"🏗 Trade Coord"},{id:"conflicts",label:"⚠️ Conflicts"},{id:"inspections",label:"🔍 Inspections"},{id:"makeready",label:"🚧 Make-Ready"},{id:"trades",label:"🏢 Manage Trades"},{id:"manhours",label:"⏱ Man Hours"}];
 var FIVES=["Sort","Set in Order","Shine","Standardize","Sustain"];
 var MP=["supv","journ","labor","app","safety"],MPL=["Supv","Journ","Labor","App","Safety"];
 
@@ -363,9 +411,10 @@ var canLS=(function(){try{localStorage.setItem("__t","1");localStorage.removeIte
 var mem=null;
 function todayKey(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10);}
 function uid(){return Math.random().toString(36).slice(2,9);}
-function fresh(){return{date:todayKey(),facilitator:"",safetyTopic:"",timer:{running:false,elapsed:0,startedAt:0},trades:["Century Steel","Ace Mechanical","Guardian Electronic","Site Concrete","Detention Specialties"],attendance:[],manpower:[],jha:[],fives:[],observations:[],coord:[],conflicts:[],inspections:[],manhours:{defaultHrs:8,weekStarting:"",entries:[]}};}
-function normConf(c){c=c||{};var tgt=(c.target!=null?String(c.target):"");return {id:c.id||uid(),building:c.building||"Sitewide",trade:c.trade||"",location:c.location||"",type:c.type||"Other",blocking:c.blocking||"No",description:c.description||"",target:tgt,status:c.status||"Planned",severity:c.severity||"Priority",owner:c.owner!=null?c.owner:"",neededBy:c.neededBy!=null?c.neededBy:(/^\d{4}-\d{2}-\d{2}/.test(tgt)?tgt.slice(0,10):""),ref:c.ref!=null?c.ref:"",createdAt:c.createdAt||todayKey()};}
-function normalize(s){if(!s||!s.trades)return null;s.conflicts=(s.conflicts||[]).map(normConf);return s;}
+function fresh(){return{date:todayKey(),facilitator:"",safetyTopic:"",timer:{running:false,elapsed:0,startedAt:0},trades:["Century Steel","Ace Mechanical","Guardian Electronic","Site Concrete","Detention Specialties"],attendance:[],manpower:[],jha:[],fives:[],observations:[],coord:[],conflicts:[],inspections:[],makeready:[],ppc:[],mpHistory:[],manhours:{defaultHrs:8,weekStarting:"",entries:[]}};}
+function normConf(c){c=c||{};var tgt=(c.target!=null?String(c.target):"");return {id:c.id||uid(),building:c.building||"Sitewide",trade:c.trade||"",location:c.location||"",type:c.type||"Other",blocking:c.blocking||"No",description:c.description||"",target:tgt,status:c.status||"Planned",severity:c.severity||"Priority",owner:c.owner!=null?c.owner:"",neededBy:c.neededBy!=null?c.neededBy:(/^\d{4}-\d{2}-\d{2}/.test(tgt)?tgt.slice(0,10):""),ref:c.ref!=null?c.ref:"",escalation:c.escalation||"None",createdAt:c.createdAt||todayKey()};}
+function normMr(m){m=m||{};return {id:m.id||uid(),building:m.building||"Sitewide",trade:m.trade||"",work:m.work||"",ctype:m.ctype||"Design / RFI",clearBy:m.clearBy!=null?m.clearBy:"",status:m.status||"Open",notes:m.notes!=null?m.notes:"",createdAt:m.createdAt||todayKey()};}
+function normalize(s){if(!s||!s.trades)return null;s.conflicts=(s.conflicts||[]).map(normConf);s.makeready=(s.makeready||[]).map(normMr);s.ppc=s.ppc||[];s.mpHistory=s.mpHistory||[];return s;}
 function load(){if(!canLS)return mem||(mem=fresh());try{var raw=localStorage.getItem(STORE);if(raw){var s=normalize(JSON.parse(raw));if(s)return s;}var old=localStorage.getItem(STORE_V1);if(old){var o=normalize(JSON.parse(old));if(o)return o;}return fresh();}catch(e){return fresh();}}
 var S=load();var dirty=false,st;
 function save(){if(canLS){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){mem=S;}}else mem=S;dirty=false;paintSave();}
@@ -380,11 +429,11 @@ function autoGrow(t){t.style.height="auto";t.style.height=t.scrollHeight+"px";}
 
 var current="summary";
 function renderTabs(){
-  var counts={conflicts:S.conflicts.filter(function(c){return c.status!=="Complete";}).length,inspections:S.inspections.filter(function(i){return i.status!=="Complete";}).length,attendance:S.attendance.length,coord:S.coord.length};
+  var counts={conflicts:S.conflicts.filter(function(c){return c.status!=="Complete";}).length,inspections:S.inspections.filter(function(i){return i.status!=="Complete";}).length,makeready:S.makeready.filter(function(m){return m.status!=="Cleared";}).length,attendance:S.attendance.length,coord:S.coord.length};
   el("tabs").innerHTML=TABS.map(function(t){var b=counts[t.id]!=null?"<span class='badge'>"+counts[t.id]+"</span>":"";return "<button class='tab"+(t.id===current?" on":"")+"' data-tab='"+t.id+"'>"+t.label+b+"</button>";}).join("");
 }
 el("tabs").addEventListener("click",function(e){var b=e.target.closest(".tab");if(!b)return;current=b.dataset.tab;renderTabs();showView();});
-function showView(){document.querySelectorAll(".view").forEach(function(v){v.classList.remove("on");});el("v-"+current).classList.add("on");window.scrollTo(0,0);if(current==="summary")renderSummary();if(current==="coord")document.querySelectorAll("[data-coordtext]").forEach(autoGrow);}
+function showView(){document.querySelectorAll(".view").forEach(function(v){v.classList.remove("on");});el("v-"+current).classList.add("on");window.scrollTo(0,0);if(current==="summary")renderSummary();if(current==="makeready")renderMakeReady();if(current==="coord")document.querySelectorAll("[data-coordtext]").forEach(autoGrow);}
 
 function bindHeader(){
   el("f-date").value=S.date;el("f-facilitator").value=S.facilitator;el("f-topic").value=S.safetyTopic;el("safety-topic2").value=S.safetyTopic;
@@ -460,6 +509,7 @@ document.addEventListener("change",function(e){
   if(ns==="coord")S.coord.find(function(x){return x.id===id;}).status=v;
   if(ns==="conflict"){S.conflicts.find(function(x){return x.id===id;}).status=v;renderConflicts();}
   if(ns==="inspection")S.inspections.find(function(x){return x.id===id;}).status=v;
+  if(ns==="mr"){S.makeready.find(function(x){return x.id===id;}).status=v;renderMakeReady();}
   renderTabs();renderSummary();touch();
 });
 
@@ -478,14 +528,93 @@ function renderConflicts(){
     var owner=c.owner?esc(c.owner):"<span class='muted'>—</span>";
     var nb=c.neededBy?esc(c.neededBy):"<span class='muted'>—</span>";
     var refline=c.ref?"<span class='confref'>"+esc(c.ref)+"</span>":"";
-    body+="<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.type)+refline+"</td><td>"+item+"</td><td>"+owner+"</td><td class='num'>"+nb+"</td><td>"+ageBadge(c)+confFlags(c)+"</td><td>"+statusSelC(c.status,"conflict",c.id)+"</td><td class='num'><button class='btn sm danger' data-delcf='"+c.id+"'>✕</button></td></tr>";
+    var esc2=(c.escalation&&c.escalation!=="None")?"<span class='escchip"+(c.escalation==="Critical-Path"?" esc-crit":"")+"'>↑ "+esc(c.escalation)+"</span>":"";
+    body+="<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.type)+refline+"</td><td>"+item+"</td><td>"+owner+"</td><td class='num'>"+nb+"</td><td>"+ageBadge(c)+confFlags(c)+esc2+"</td><td>"+statusSelC(c.status,"conflict",c.id)+"</td><td class='num'><button class='btn sm danger' data-delcf='"+c.id+"'>✕</button></td></tr>";
   });
   body+="</tbody>";el("cf-table").innerHTML=head+body;
 }
 function statusSelC(v,ns,id){return "<select class='statussel' data-v='"+v+"' data-statusns='"+ns+"' data-statusid='"+id+"'>"+opts(["Planned","Active","Blocked","Complete"],v)+"</select>";}
-el("cf-add").onclick=function(){el("cf-building").innerHTML=opts(BUILDINGS,"Sitewide");el("cf-trade").innerHTML=tradeOpts();toggleForm("cf-form",true);};
-el("cf-save").onclick=function(){var desc=el("cf-desc").value.trim();if(!desc){el("cf-desc").focus();return;}S.conflicts.push({id:uid(),building:el("cf-building").value,trade:el("cf-trade").value,location:el("cf-location").value,type:el("cf-type").value,blocking:el("cf-blocking").value,description:desc,target:el("cf-target").value,status:"Planned",severity:el("cf-severity").value,owner:el("cf-owner").value.trim(),neededBy:el("cf-neededby").value,ref:el("cf-ref").value.trim(),createdAt:todayKey()});["cf-location","cf-desc","cf-target","cf-owner","cf-neededby","cf-ref"].forEach(function(i){el(i).value="";});el("cf-severity").value="Priority";toggleForm("cf-form",false);renderConflicts();renderTabs();renderSummary();touch();};
+el("cf-add").onclick=function(){el("cf-building").innerHTML=opts(BUILDINGS,"Sitewide");el("cf-trade").innerHTML=tradeOpts();el("cf-escalation").value="None";toggleForm("cf-form",true);};
+el("cf-save").onclick=function(){var desc=el("cf-desc").value.trim();if(!desc){el("cf-desc").focus();return;}S.conflicts.push({id:uid(),building:el("cf-building").value,trade:el("cf-trade").value,location:el("cf-location").value,type:el("cf-type").value,blocking:el("cf-blocking").value,description:desc,target:el("cf-target").value,status:"Planned",severity:el("cf-severity").value,owner:el("cf-owner").value.trim(),neededBy:el("cf-neededby").value,ref:el("cf-ref").value.trim(),escalation:el("cf-escalation").value,createdAt:todayKey()});["cf-location","cf-desc","cf-target","cf-owner","cf-neededby","cf-ref"].forEach(function(i){el(i).value="";});el("cf-severity").value="Priority";el("cf-escalation").value="None";toggleForm("cf-form",false);renderConflicts();renderTabs();renderSummary();touch();};
 el("cf-table").addEventListener("click",function(e){var d=e.target.closest("[data-delcf]");if(d){S.conflicts=S.conflicts.filter(function(x){return x.id!==d.dataset.delcf;});renderConflicts();renderTabs();touch();}});
+
+/* ===== Make-Ready / Constraints ===== */
+function mrClearBadge(m){var t=todayKey();if(m.status==="Cleared")return "<span class='flag' style='background:#dcefe2;color:var(--done);margin-left:0'>CLEARED</span>";if(!m.clearBy)return "<span class='flag flag-need' style='margin-left:0'>NO DATE</span>";var d=daysBetween(t,m.clearBy);if(d<0)return "<span class='flag flag-over' style='margin-left:0'>OVERDUE "+(-d)+"d</span>";if(d<=3)return "<span class='flag flag-part' style='margin-left:0'>DUE "+d+"d</span>";return "<span class='agebadge'>"+d+"d left</span>";}
+function renderMakeReady(){
+  var head="<thead><tr><th>Type</th><th>Building</th><th>Trade</th><th>Work It Blocks</th><th>Clear By</th><th>Timing</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
+  var open=S.makeready.filter(function(m){return m.status!=="Cleared";}),done=S.makeready.filter(function(m){return m.status==="Cleared";});
+  var ordered=open.concat(done);
+  if(!S.makeready.length)body+="<tr><td colspan='8'><div class='emptymsg'>✅ No constraints logged. Add anything blocking the next 2–3 weeks of work.</div></td></tr>";
+  ordered.forEach(function(m){
+    var notes=m.notes?"<span class='confloc'>"+esc(m.notes)+"</span>":"";
+    var tog="<select class='statussel' data-statusns='mr' data-statusid='"+m.id+"' data-v='"+esc(m.status)+"'>"+opts(["Open","Cleared"],m.status)+"</select>";
+    body+="<tr"+(m.status==="Cleared"?" style='opacity:.55'":"")+"><td><b>"+esc(m.ctype)+"</b></td><td>"+esc(m.building)+"</td><td>"+esc(m.trade)+"</td><td><div class='confitem'>"+esc(m.work)+notes+"</div></td><td class='num'>"+(m.clearBy?esc(m.clearBy):"<span class='muted'>—</span>")+"</td><td>"+mrClearBadge(m)+"</td><td>"+tog+"</td><td class='num'><button class='btn sm danger' data-delmr='"+m.id+"'>✕</button></td></tr>";
+  });
+  body+="</tbody>";el("mr-table").innerHTML=head+body;
+  renderPPC();
+}
+el("mr-add").onclick=function(){el("mr-building").innerHTML=opts(BUILDINGS,"Sitewide");el("mr-trade").innerHTML=tradeOpts();toggleForm("mr-form",true);};
+el("mr-save").onclick=function(){var work=el("mr-work").value.trim();if(!work){el("mr-work").focus();return;}S.makeready.push({id:uid(),building:el("mr-building").value,trade:el("mr-trade").value,work:work,ctype:el("mr-ctype").value,clearBy:el("mr-clearby").value,status:"Open",notes:el("mr-notes").value.trim(),createdAt:todayKey()});["mr-work","mr-clearby","mr-notes"].forEach(function(i){el(i).value="";});toggleForm("mr-form",false);renderMakeReady();renderTabs();touch();};
+el("mr-table").addEventListener("click",function(e){var d=e.target.closest("[data-delmr]");if(d){S.makeready=S.makeready.filter(function(x){return x.id!==d.dataset.delmr;});renderMakeReady();renderTabs();touch();}});
+
+/* ===== PPC ===== */
+function ppcBadge(v){var cls=v>=80?"ppc-good":(v>=60?"ppc-mid":"ppc-low");return "<span class='ppcbadge "+cls+"'>"+v+"%</span>";}
+function renderPPC(){
+  var head="<thead><tr><th>Week Starting</th><th class='num'>Committed</th><th class='num'>Completed</th><th class='num'>PPC</th><th></th></tr></thead>",body="<tbody>";
+  var rows=S.ppc.slice().sort(function(a,b){return (a.weekStarting<b.weekStarting)?1:-1;});
+  if(!rows.length)body+="<tr><td colspan='5'><div class='emptymsg'>No PPC logged yet.</div></td></tr>";
+  rows.forEach(function(w){var pct=w.committed>0?Math.round(w.completed/w.committed*100):0;body+="<tr><td class='mono'>"+esc(w.weekStarting||"—")+"</td><td class='num'>"+w.committed+"</td><td class='num'>"+w.completed+"</td><td class='num'>"+ppcBadge(pct)+"</td><td class='num'><button class='btn sm danger' data-delppc='"+w.id+"'>✕</button></td></tr>";});
+  body+="</tbody>";el("ppc-table").innerHTML=head+body;
+}
+el("ppc-pull").onclick=function(){var total=S.coord.length,done=S.coord.filter(function(t){return t.status==="Complete";}).length;el("ppc-committed").value=total;el("ppc-completed").value=done;if(!el("ppc-week").value)el("ppc-week").value=S.manhours.weekStarting||S.date;};
+el("ppc-log").onclick=function(){var com=parseInt(el("ppc-committed").value,10)||0,don=parseInt(el("ppc-completed").value,10)||0,wk=el("ppc-week").value;if(com<=0){el("ppc-committed").focus();alert("Enter the number of tasks committed this week.");return;}if(don>com)don=com;S.ppc.push({id:uid(),weekStarting:wk,committed:com,completed:don});["ppc-committed","ppc-completed"].forEach(function(i){el(i).value="";});renderPPC();touch();};
+document.addEventListener("click",function(e){var d=e.target.closest("[data-delppc]");if(d){S.ppc=S.ppc.filter(function(x){return x.id!==d.dataset.delppc;});renderPPC();touch();}});
+
+/* ===== Weekly Rollup ===== */
+function renderRollup(){
+  var t=todayKey();
+  var openCf=S.conflicts.filter(function(c){return c.status!=="Complete";});
+  var crit=openCf.filter(function(c){return c.severity==="Critical"||c.escalation==="Critical-Path";});
+  var overdue=openCf.filter(function(c){return c.neededBy&&c.neededBy<t;});
+  var aging=openCf.filter(function(c){var a=daysBetween(c.createdAt,t);return a!=null&&a>=7;}).sort(function(a,b){return daysBetween(b.createdAt,t)-daysBetween(a.createdAt,t);});
+  var openMr=S.makeready.filter(function(m){return m.status!=="Cleared";});
+  var upcomingIns=S.inspections.filter(function(i){return i.status!=="Complete";}).sort(function(a,b){return (a.date||"")<(b.date||"")?-1:1;});
+  var lastPpc=S.ppc.slice().sort(function(a,b){return (a.weekStarting<b.weekStarting)?1:-1;})[0];
+  var lastPct=lastPpc&&lastPpc.committed>0?Math.round(lastPpc.completed/lastPpc.committed*100):null;
+
+  el("print-rollup-head").innerHTML="<h1>CCJC Weekly Coordination Rollup</h1><div class='pm'>Yates–Metcon · Week of "+esc(S.manhours.weekStarting||S.date)+" · Generated "+esc(t)+"</div>";
+  el("rollup-kpis").innerHTML=[
+    ["PPC (latest)",lastPct==null?"—":lastPct+"%",lastPpc?("wk "+(lastPpc.weekStarting||"—")):"no data"],
+    ["Critical items",crit.length,"open"],
+    ["Overdue conflicts",overdue.length,"past need-by"],
+    ["Aging ≥7 days",aging.length,"open conflicts"],
+    ["Open constraints",openMr.length,"make-ready"]
+  ].map(function(s){return "<div class='stat'><div class='k'>"+s[0]+"</div><div class='v'>"+s[1]+"</div><div class='sub'>"+s[2]+"</div></div>";}).join("");
+
+  function confRows(list,empty){
+    if(!list.length)return "<div class='emptymsg'>"+empty+"</div>";
+    return "<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Item</th><th>Owner</th><th>Needed By</th><th>Age</th><th>Escalation</th></tr></thead><tbody>"+list.map(function(c){var od=c.neededBy&&c.neededBy<t?"<span class='flag flag-over'>OVERDUE</span>":"";var age=daysBetween(c.createdAt,t);age=age==null?0:age;var e2=(c.escalation&&c.escalation!=="None")?"<span class='escchip"+(c.escalation==="Critical-Path"?" esc-crit":"")+"'>"+esc(c.escalation)+"</span>":"<span class='muted'>—</span>";return "<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.description)+"</td><td>"+(c.owner?esc(c.owner):"<span class='flag flag-need'>NO OWNER</span>")+"</td><td class='num'>"+(c.neededBy?esc(c.neededBy)+" "+od:"<span class='flag flag-need'>NO DATE</span>")+"</td><td class='num'>"+age+"d</td><td>"+e2+"</td></tr>";}).join("")+"</tbody></table></div>";
+  }
+  el("rollup-critical").innerHTML=confRows(crit.concat(overdue.filter(function(c){return crit.indexOf(c)<0;})),"✅ No critical or overdue items.");
+  el("rollup-aging").innerHTML=confRows(aging,"✅ Nothing aging past 7 days.");
+
+  el("rollup-constraints").innerHTML=openMr.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Type</th><th>Building</th><th>Trade</th><th>Work It Blocks</th><th>Clear By</th><th>Timing</th></tr></thead><tbody>"+openMr.sort(function(a,b){return (a.clearBy||"9999")<(b.clearBy||"9999")?-1:1;}).map(function(m){return "<tr><td><b>"+esc(m.ctype)+"</b></td><td>"+esc(m.building)+"</td><td>"+esc(m.trade)+"</td><td>"+esc(m.work)+"</td><td class='num'>"+(m.clearBy?esc(m.clearBy):"—")+"</td><td>"+mrClearBadge(m)+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open constraints.</div>";
+
+  el("rollup-inspections").innerHTML=upcomingIns.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Date</th><th>Building</th><th>Trade</th><th>Type</th><th>Location</th><th>Status</th></tr></thead><tbody>"+upcomingIns.map(function(i){return "<tr><td class='mono'>"+esc(i.date)+"</td><td>"+esc(i.building)+"</td><td>"+esc(i.trade)+"</td><td>"+esc(i.type)+"</td><td>"+esc(i.location)+"</td><td>"+esc(i.status)+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>No open inspections.</div>";
+
+  // Manpower trend: history snapshots + today's current total
+  var trend=S.mpHistory.slice();
+  var todayTotal=S.manpower.reduce(function(a,r){return a+["supv","journ","labor","app","safety"].reduce(function(b,k){return b+(+r[k]||0);},0);},0);
+  if(todayTotal>0)trend=trend.concat([{date:S.date,workers:todayTotal}]);
+  trend=trend.slice(-10);
+  if(trend.length){var mx=Math.max.apply(null,trend.map(function(x){return x.workers;}))||1;el("rollup-manpower").innerHTML=trend.map(function(x){var w=Math.round(x.workers/mx*220);return "<div class='trendrow'><span class='tl'>"+esc(x.date)+"</span><span class='trendbar' style='width:"+w+"px'></span><span class='tv'>"+x.workers+"</span></div>";}).join("");}
+  else el("rollup-manpower").innerHTML="<div class='emptymsg'>Manpower trend builds as you use New Day each morning.</div>";
+
+  // PPC trend
+  var prows=S.ppc.slice().sort(function(a,b){return (a.weekStarting<b.weekStarting)?-1:1;}).slice(-8);
+  if(prows.length){el("rollup-ppc").innerHTML=prows.map(function(w){var pct=w.committed>0?Math.round(w.completed/w.committed*100):0;var bw=Math.round(pct/100*220);return "<div class='trendrow'><span class='tl'>"+esc(w.weekStarting||"—")+"</span><span class='trendbar' style='width:"+bw+"px'></span><span class='tv'>"+pct+"%</span></div>";}).join("");}
+  else el("rollup-ppc").innerHTML="<div class='emptymsg'>Log PPC on the Make-Ready tab to build this trend.</div>";
+}
 
 function renderInspections(){
   var head="<thead><tr><th>Date</th><th>Building</th><th>Trade</th><th>Type</th><th>Location</th><th>Notes / Time</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
@@ -581,15 +710,22 @@ el("btn-newday").onclick=function(){var d=new Date(S.date);d.setDate(d.getDate()
 el("nd-cancel").onclick=function(){el("newday-overlay").classList.remove("on");};
 el("newday-overlay").addEventListener("click",function(e){if(e.target===this)this.classList.remove("on");});
 el("nd-go").onclick=function(){
-  var keepRoster=el("nd-roster").checked,keepMp=el("nd-manpower").checked,keepTasks=el("nd-tasks").checked,keepCf=el("nd-conflicts").checked,keepIns=el("nd-inspections").checked;
+  var keepRoster=el("nd-roster").checked,keepMp=el("nd-manpower").checked,keepTasks=el("nd-tasks").checked,keepCf=el("nd-conflicts").checked,keepIns=el("nd-inspections").checked,keepMr=el("nd-makeready").checked;
   var trades=S.trades.slice();
   var attendance=keepRoster?S.attendance.map(function(a){return {id:uid(),name:a.name,company:a.company,status:"absent"};}):[];
   var manpower=keepMp?S.manpower.map(function(r){return {id:uid(),trade:r.trade,supv:r.supv,journ:r.journ,labor:r.labor,app:r.app,safety:r.safety};}):[];
   var coord=keepTasks?S.coord.filter(function(t){return t.status!=="Complete";}).map(function(t){return {id:uid(),building:t.building,trade:t.trade,text:t.text,status:t.status};}):[];
   var conflicts=keepCf?S.conflicts.filter(function(c){return c.status!=="Complete";}).map(function(c){return Object.assign({},c,{id:uid()});}):[];
   var inspections=keepIns?S.inspections.filter(function(i){return i.status!=="Complete";}).map(function(i){return Object.assign({},i,{id:uid()});}):[];
+  var makeready=keepMr?S.makeready.filter(function(m){return m.status!=="Cleared";}).map(function(m){return Object.assign({},m);}):[];
   var mhKeep=S.manhours;
-  S=fresh();S.date=el("nd-date").value||todayKey();S.trades=trades;S.attendance=attendance;S.manpower=manpower;S.coord=coord;S.conflicts=conflicts;S.inspections=inspections;S.manhours=mhKeep;
+  // snapshot the day being closed out for the manpower trend
+  var dayTotal=S.manpower.reduce(function(a,r){return a+["supv","journ","labor","app","safety"].reduce(function(b,k){return b+(+r[k]||0);},0);},0);
+  var mpHist=(S.mpHistory||[]).filter(function(x){return x.date!==S.date;});
+  if(dayTotal>0)mpHist.push({date:S.date,workers:dayTotal});
+  mpHist=mpHist.slice(-30);
+  var ppcKeep=S.ppc||[];
+  S=fresh();S.date=el("nd-date").value||todayKey();S.trades=trades;S.attendance=attendance;S.manpower=manpower;S.coord=coord;S.conflicts=conflicts;S.inspections=inspections;S.makeready=makeready;S.manhours=mhKeep;S.ppc=ppcKeep;S.mpHistory=mpHist;
   el("newday-overlay").classList.remove("on");save();renderAll();
 };
 
@@ -597,12 +733,13 @@ el("btn-export").onclick=function(){var blob=new Blob([JSON.stringify(S,null,2)]
 el("btn-import").onclick=function(){el("filein").click();};
 el("filein").addEventListener("change",function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.trades)throw 0;S=normalize(d)||d;save();renderAll();}catch(err){alert("That file isn't valid coordination JSON.");}};r.readAsText(f);e.target.value="";});
 function printAs(cls){document.body.classList.add(cls);window.print();setTimeout(function(){document.body.classList.remove(cls);},300);}
-window.addEventListener("afterprint",function(){document.body.classList.remove("print-summary","print-manhours");});
+window.addEventListener("afterprint",function(){document.body.classList.remove("print-summary","print-manhours","print-rollup");});
 el("btn-pdf-summary").onclick=function(){renderSummary();printAs("print-summary");};
 el("btn-pdf").onclick=function(){current="summary";renderTabs();showView();renderSummary();setTimeout(function(){printAs("print-summary");},60);};
+el("btn-weekly").onclick=function(){renderRollup();setTimeout(function(){printAs("print-rollup");},60);};
 el("mh-pdf").onclick=function(){printAs("print-manhours");};
 
-function renderAll(){bindHeader();paintTimer();if(S.timer.running)startTick();renderTabs();renderAttendance();renderManpower();renderCoord();renderConflicts();renderInspections();renderJHA();renderFives();renderObs();renderTrades();renderManhours();renderSummary();showView();paintSave();}
+function renderAll(){bindHeader();paintTimer();if(S.timer.running)startTick();renderTabs();renderAttendance();renderManpower();renderCoord();renderConflicts();renderInspections();renderMakeReady();renderJHA();renderFives();renderObs();renderTrades();renderManhours();renderSummary();showView();paintSave();}
 renderAll();
 })();
 </script>
