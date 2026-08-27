@@ -223,7 +223,8 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <div class="savechip" id="savechip"><span class="dot"></span><span>Saved</span><span class="mode" id="savemode">· Local only</span></div>
       <div class="hbtns">
         <button id="btn-newday" class="primary">🗓 New Day</button>
-        <button id="btn-export">↧ Export</button>
+        <button id="btn-pdf">⬇ PDF</button>
+        <button id="btn-export">↧ JSON</button>
         <button id="btn-import">↥ Import</button>
       </div>
     </div>
@@ -240,6 +241,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
     <div class="card"><div class="cardhead"><h3>👥 Attendance Snapshot</h3></div><div class="cardbody"><div class="attsnap" id="summary-att"></div></div></div>
     <div class="card"><div class="cardhead"><h3>💪 Manpower by Trade</h3></div><div class="cardbody" style="padding:0;"><div class="tblwrap" style="border:0;box-shadow:none;border-radius:0;"><table id="summary-manpower"></table></div></div></div>
     <div class="card"><div class="cardhead"><h3>⚠️ Open Conflicts</h3></div><div class="cardbody" id="summary-conflicts"></div></div>
+    <div class="card"><div class="cardhead"><h3>🔍 Open Inspections</h3></div><div class="cardbody" id="summary-inspections"></div></div>
   </section>
 
   <section class="view" id="v-safety">
@@ -566,6 +568,8 @@ function renderSummary(){
   mh+="</tbody>";el("summary-manpower").innerHTML=mh;
   var oc=S.conflicts.filter(function(c){return c.status!=="Complete";});
   el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Item</th><th>Owner</th><th>Needed By</th></tr></thead><tbody>"+oc.map(function(c){var od=c.neededBy&&c.neededBy<todayKey()?"<span class='flag flag-over'>OVERDUE</span>":"";var loc=c.location?"<span class='confloc'>"+esc(c.location)+"</span>":"";return "<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td><div class='confitem'>"+(c.blocking==="Yes"?"<span class='flag flag-block'>BLOCKING</span>":"")+esc(c.description)+loc+"</div></td><td>"+(c.owner?esc(c.owner):"<span class='flag flag-need'>NO OWNER</span>")+"</td><td class='num'>"+(c.neededBy?esc(c.neededBy)+" "+od:"<span class='flag flag-need'>NO DATE</span>")+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
+  var oi=S.inspections.filter(function(i){return i.status!=="Complete";});
+  el("summary-inspections").innerHTML=oi.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Date</th><th>Building</th><th>Trade</th><th>Type</th><th>Location</th><th>Status</th></tr></thead><tbody>"+oi.map(function(i){return "<tr><td class='mono'>"+esc(i.date)+"</td><td>"+esc(i.building)+"</td><td>"+esc(i.trade)+"</td><td>"+esc(i.type)+"</td><td>"+esc(i.location)+"</td><td>"+esc(i.status)+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open inspections.</div>";
   el("print-summary-head").innerHTML="<h1>CCJC Daily Trade Coordination — Meeting Summary</h1><div class='pm'>Yates–Metcon · "+esc(S.date)+" · Facilitator: "+esc(S.facilitator||"—")+"</div>";
   el("print-mh-head").innerHTML="<h1>CCJC Man Hours Log</h1><div class='pm'>Yates–Metcon · Week starting "+esc(S.manhours.weekStarting||"—")+"</div>";
 }
@@ -595,6 +599,7 @@ el("filein").addEventListener("change",function(e){var f=e.target.files[0];if(!f
 function printAs(cls){document.body.classList.add(cls);window.print();setTimeout(function(){document.body.classList.remove(cls);},300);}
 window.addEventListener("afterprint",function(){document.body.classList.remove("print-summary","print-manhours");});
 el("btn-pdf-summary").onclick=function(){renderSummary();printAs("print-summary");};
+el("btn-pdf").onclick=function(){current="summary";renderTabs();showView();renderSummary();setTimeout(function(){printAs("print-summary");},60);};
 el("mh-pdf").onclick=function(){printAs("print-manhours");};
 
 function renderAll(){bindHeader();paintTimer();if(S.timer.running)startTick();renderTabs();renderAttendance();renderManpower();renderCoord();renderConflicts();renderInspections();renderJHA();renderFives();renderObs();renderTrades();renderManhours();renderSummary();showView();paintSave();}
