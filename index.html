@@ -15,6 +15,22 @@
   --shadow:0 1px 2px rgba(22,38,59,.06),0 3px 10px rgba(22,38,59,.05);
   --radius:10px;
 }
+.sevchip{display:inline-block;font-family:'IBM Plex Mono';font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.sev-rout{background:var(--line-soft);color:var(--steel);}
+.sev-pri{background:#f6ead0;color:#8a6414;}
+.sev-crit{background:#f7d9d4;color:var(--block);}
+.agebadge{display:inline-block;font-family:'IBM Plex Mono';font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;background:var(--line-soft);color:var(--ink-soft);}
+.age-warn{background:#f6ead0;color:#8a6414;}
+.age-hot{background:#f7d9d4;color:var(--block);}
+.flag{display:inline-block;font-family:'IBM Plex Mono';font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:7px;margin-left:4px;vertical-align:middle;white-space:nowrap;}
+.flag-over{background:var(--block);color:#fff;}
+.flag-need{background:#f6ead0;color:#8a6414;border:1px solid #e4c780;margin-left:4px;}
+.flag-block{background:#fbeae7;color:var(--block);border:1px solid #eab9b0;margin:0 5px 0 0;}
+.flag-part{background:#fdf3e0;color:#8a6414;border:1px solid #eecfa0;margin:0 5px 0 0;}
+.confloc{display:block;font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.confref{display:block;font-family:'IBM Plex Mono';font-size:10px;color:var(--steel);margin-top:2px;}
+.confitem{max-width:340px;}
+.muted{color:var(--ink-soft);}
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.42;-webkit-font-smoothing:antialiased;}
@@ -278,7 +294,9 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
     <div class="sechead"><h2>⚠️ Conflicts &amp; Issues</h2><div class="spacer"></div><button class="btn solid" id="cf-add">+ Log Conflict</button></div>
     <div class="formpanel" id="cf-form"><h4>+ New Conflict / Issue</h4>
       <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;"><div class="field"><label>Building</label><select class="f" id="cf-building"></select></div><div class="field"><label>Trade</label><select class="f" id="cf-trade"></select></div><div class="field"><label>Location</label><input class="f" id="cf-location"></div></div>
-      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Type</label><select class="f" id="cf-type"><option>RFI Pending</option><option>MEP Conflict</option><option>Embed/Relief Angle</option><option>Access Needed</option><option>Material Missing</option><option>Sequencing</option><option>Safety</option><option>Permit/Dig Permit</option><option>Detention Hardware</option><option>Other</option></select></div><div class="field"><label>Blocking?</label><select class="f" id="cf-blocking"><option>Yes</option><option>No</option><option>Partial</option></select></div><div class="field"><label>Target Resolution</label><input class="f" id="cf-target" placeholder="date / note"></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Type</label><select class="f" id="cf-type"><option>RFI Pending</option><option>MEP Conflict</option><option>Embed/Relief Angle</option><option>Access Needed</option><option>Material Missing</option><option>Sequencing</option><option>Safety</option><option>Permit/Dig Permit</option><option>Detention Hardware</option><option>Other</option></select></div><div class="field"><label>Blocking?</label><select class="f" id="cf-blocking"><option>Yes</option><option>No</option><option>Partial</option></select></div><div class="field"><label>Severity</label><select class="f" id="cf-severity"><option>Routine</option><option selected>Priority</option><option>Critical</option></select></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;"><div class="field"><label>Owner</label><input class="f" id="cf-owner" placeholder="who's accountable"></div><div class="field"><label>Needed By</label><input type="date" class="f" id="cf-neededby"></div><div class="field"><label>RFI / Ref #</label><input class="f" id="cf-ref" placeholder="RFI-000 / ref (optional)"></div></div>
+      <div class="fieldgrid" style="grid-template-columns:1fr;margin-top:10px;"><div class="field"><label>Notes / Target</label><input class="f" id="cf-target" placeholder="target date or note (optional)"></div></div>
       <div class="field" style="margin-top:10px;"><label>Description</label><textarea class="f" id="cf-desc"></textarea></div>
       <div class="formactions"><button class="btn solid sm" id="cf-save">Log</button><button class="btn sm" data-close="cf-form">Cancel</button></div>
     </div>
@@ -334,7 +352,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
 (function(){
 "use strict";
 var BUILDINGS=["Sitewide","Courthouse","Detention Center","Sheriff's Office"];
-var STORE="ccjc_coord_v1";
+var STORE="ccjc_coord_v2";var STORE_V1="ccjc_coord_v1";
 var TABS=[{id:"summary",label:"📋 Summary"},{id:"safety",label:"🦺 Safety & 5S"},{id:"attendance",label:"👥 Attendance"},{id:"manpower",label:"💪 Manpower"},{id:"coord",label:"🏗 Trade Coord"},{id:"conflicts",label:"⚠️ Conflicts"},{id:"inspections",label:"🔍 Inspections"},{id:"trades",label:"🏢 Manage Trades"},{id:"manhours",label:"⏱ Man Hours"}];
 var FIVES=["Sort","Set in Order","Shine","Standardize","Sustain"];
 var MP=["supv","journ","labor","app","safety"],MPL=["Supv","Journ","Labor","App","Safety"];
@@ -344,7 +362,9 @@ var mem=null;
 function todayKey(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10);}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function fresh(){return{date:todayKey(),facilitator:"",safetyTopic:"",timer:{running:false,elapsed:0,startedAt:0},trades:["Century Steel","Ace Mechanical","Guardian Electronic","Site Concrete","Detention Specialties"],attendance:[],manpower:[],jha:[],fives:[],observations:[],coord:[],conflicts:[],inspections:[],manhours:{defaultHrs:8,weekStarting:"",entries:[]}};}
-function load(){if(!canLS)return mem||(mem=fresh());try{var s=JSON.parse(localStorage.getItem(STORE));return s&&s.trades?s:fresh();}catch(e){return fresh();}}
+function normConf(c){c=c||{};var tgt=(c.target!=null?String(c.target):"");return {id:c.id||uid(),building:c.building||"Sitewide",trade:c.trade||"",location:c.location||"",type:c.type||"Other",blocking:c.blocking||"No",description:c.description||"",target:tgt,status:c.status||"Planned",severity:c.severity||"Priority",owner:c.owner!=null?c.owner:"",neededBy:c.neededBy!=null?c.neededBy:(/^\d{4}-\d{2}-\d{2}/.test(tgt)?tgt.slice(0,10):""),ref:c.ref!=null?c.ref:"",createdAt:c.createdAt||todayKey()};}
+function normalize(s){if(!s||!s.trades)return null;s.conflicts=(s.conflicts||[]).map(normConf);return s;}
+function load(){if(!canLS)return mem||(mem=fresh());try{var raw=localStorage.getItem(STORE);if(raw){var s=normalize(JSON.parse(raw));if(s)return s;}var old=localStorage.getItem(STORE_V1);if(old){var o=normalize(JSON.parse(old));if(o)return o;}return fresh();}catch(e){return fresh();}}
 var S=load();var dirty=false,st;
 function save(){if(canLS){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){mem=S;}}else mem=S;dirty=false;paintSave();}
 function touch(){dirty=true;paintSave();clearTimeout(st);st=setTimeout(save,400);}
@@ -436,20 +456,33 @@ document.addEventListener("change",function(e){
   var s=e.target;if(!s.classList||!s.classList.contains("statussel"))return;
   var ns=s.dataset.statusns,id=s.dataset.statusid,v=s.value;s.setAttribute("data-v",v);
   if(ns==="coord")S.coord.find(function(x){return x.id===id;}).status=v;
-  if(ns==="conflict")S.conflicts.find(function(x){return x.id===id;}).status=v;
+  if(ns==="conflict"){S.conflicts.find(function(x){return x.id===id;}).status=v;renderConflicts();}
   if(ns==="inspection")S.inspections.find(function(x){return x.id===id;}).status=v;
-  renderTabs();touch();
+  renderTabs();renderSummary();touch();
 });
 
+function daysBetween(a,b){if(!a||!b)return null;var da=new Date(a+"T00:00:00"),db=new Date(b+"T00:00:00");if(isNaN(da)||isNaN(db))return null;return Math.round((db-da)/86400000);}
+function sevChip(s){s=s||"Priority";var cls=s==="Critical"?"sev-crit":(s==="Routine"?"sev-rout":"sev-pri");return "<span class='sevchip "+cls+"'>"+esc(s)+"</span>";}
+function ageBadge(c){var age=daysBetween(c.createdAt,todayKey());if(age==null)age=0;var cls="age-ok";if(c.status!=="Complete"){if(age>=7)cls="age-hot";else if(age>=3)cls="age-warn";}return "<span class='agebadge "+cls+"' title='Days open'>"+age+"d</span>";}
+function confFlags(c){if(c.status==="Complete")return "";var f="",t=todayKey();var od=c.neededBy?daysBetween(c.neededBy,t):null;if(od!=null&&od>0)f+="<span class='flag flag-over'>OVERDUE "+od+"d</span>";if(!c.owner)f+="<span class='flag flag-need'>NO OWNER</span>";if(!c.neededBy)f+="<span class='flag flag-need'>NO DATE</span>";return f;}
 function renderConflicts(){
-  var head="<thead><tr><th>Building</th><th>Trade</th><th>Location</th><th>Type</th><th>Description</th><th>Blocking?</th><th>Target Res.</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
-  if(!S.conflicts.length)body+="<tr><td colspan='9'><div class='emptymsg'>✅ No conflicts logged.</div></td></tr>";
-  S.conflicts.forEach(function(c){body+="<tr><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.location)+"</td><td>"+esc(c.type)+"</td><td>"+esc(c.description)+"</td><td class='num'>"+esc(c.blocking)+"</td><td>"+esc(c.target)+"</td><td>"+statusSelC(c.status,"conflict",c.id)+"</td><td class='num'><button class='btn sm danger' data-delcf='"+c.id+"'>✕</button></td></tr>";});
+  var head="<thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Type</th><th>Item</th><th>Owner</th><th>Needed By</th><th>Age / Flags</th><th>Status</th><th></th></tr></thead>",body="<tbody>";
+  if(!S.conflicts.length)body+="<tr><td colspan='10'><div class='emptymsg'>✅ No conflicts logged.</div></td></tr>";
+  S.conflicts.forEach(function(c){
+    var block=c.blocking==="Yes"?"<span class='flag flag-block'>BLOCKING</span>":(c.blocking==="Partial"?"<span class='flag flag-part'>PARTIAL</span>":"");
+    var loc=c.location?"<span class='confloc'>"+esc(c.location)+"</span>":"";
+    var note=c.target?" — "+esc(c.target):"";
+    var item="<div class='confitem' title='"+esc(c.description+(c.target?"  |  Notes: "+c.target:""))+"'>"+block+esc(c.description)+loc+"</div>";
+    var owner=c.owner?esc(c.owner):"<span class='muted'>—</span>";
+    var nb=c.neededBy?esc(c.neededBy):"<span class='muted'>—</span>";
+    var refline=c.ref?"<span class='confref'>"+esc(c.ref)+"</span>":"";
+    body+="<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.type)+refline+"</td><td>"+item+"</td><td>"+owner+"</td><td class='num'>"+nb+"</td><td>"+ageBadge(c)+confFlags(c)+"</td><td>"+statusSelC(c.status,"conflict",c.id)+"</td><td class='num'><button class='btn sm danger' data-delcf='"+c.id+"'>✕</button></td></tr>";
+  });
   body+="</tbody>";el("cf-table").innerHTML=head+body;
 }
 function statusSelC(v,ns,id){return "<select class='statussel' data-v='"+v+"' data-statusns='"+ns+"' data-statusid='"+id+"'>"+opts(["Planned","Active","Blocked","Complete"],v)+"</select>";}
 el("cf-add").onclick=function(){el("cf-building").innerHTML=opts(BUILDINGS,"Sitewide");el("cf-trade").innerHTML=tradeOpts();toggleForm("cf-form",true);};
-el("cf-save").onclick=function(){var desc=el("cf-desc").value.trim();if(!desc){el("cf-desc").focus();return;}S.conflicts.push({id:uid(),building:el("cf-building").value,trade:el("cf-trade").value,location:el("cf-location").value,type:el("cf-type").value,blocking:el("cf-blocking").value,description:desc,target:el("cf-target").value,status:"Planned"});["cf-location","cf-desc","cf-target"].forEach(function(i){el(i).value="";});toggleForm("cf-form",false);renderConflicts();renderTabs();touch();};
+el("cf-save").onclick=function(){var desc=el("cf-desc").value.trim();if(!desc){el("cf-desc").focus();return;}S.conflicts.push({id:uid(),building:el("cf-building").value,trade:el("cf-trade").value,location:el("cf-location").value,type:el("cf-type").value,blocking:el("cf-blocking").value,description:desc,target:el("cf-target").value,status:"Planned",severity:el("cf-severity").value,owner:el("cf-owner").value.trim(),neededBy:el("cf-neededby").value,ref:el("cf-ref").value.trim(),createdAt:todayKey()});["cf-location","cf-desc","cf-target","cf-owner","cf-neededby","cf-ref"].forEach(function(i){el(i).value="";});el("cf-severity").value="Priority";toggleForm("cf-form",false);renderConflicts();renderTabs();renderSummary();touch();};
 el("cf-table").addEventListener("click",function(e){var d=e.target.closest("[data-delcf]");if(d){S.conflicts=S.conflicts.filter(function(x){return x.id!==d.dataset.delcf;});renderConflicts();renderTabs();touch();}});
 
 function renderInspections(){
@@ -521,9 +554,9 @@ el("mh-table").addEventListener("click",function(e){var d=e.target.closest("[dat
 function renderSummary(){
   var here=S.attendance.filter(function(a){return a.status==="here";}).length,remote=S.attendance.filter(function(a){return a.status==="remote";}).length,absent=S.attendance.filter(function(a){return a.status==="absent";}).length;
   var totalWorkers=S.manpower.reduce(function(a,r){return a+["supv","journ","labor","app","safety"].reduce(function(b,k){return b+(+r[k]||0);},0);},0);
-  var openCf=S.conflicts.filter(function(c){return c.status!=="Complete";}).length,blocking=S.conflicts.filter(function(c){return c.status!=="Complete"&&c.blocking==="Yes";}).length;
+  var openCf=S.conflicts.filter(function(c){return c.status!=="Complete";}).length,blocking=S.conflicts.filter(function(c){return c.status!=="Complete"&&c.blocking==="Yes";}).length,overdueCf=S.conflicts.filter(function(c){return c.status!=="Complete"&&c.neededBy&&c.neededBy<todayKey();}).length;
   var openIns=S.inspections.filter(function(i){return i.status!=="Complete";}).length,openTasks=S.coord.filter(function(t){return t.status!=="Complete";}).length;
-  el("summary-stats").innerHTML=[["On-site manpower",totalWorkers,S.manpower.length+" trades"],["Attendance",here+" here",remote+" remote · "+absent+" absent"],["Open tasks",openTasks,S.coord.length+" total"],["Open conflicts",openCf,blocking+" blocking"],["Open inspections",openIns,""]].map(function(s){return "<div class='stat'><div class='k'>"+s[0]+"</div><div class='v'>"+s[1]+"</div><div class='sub'>"+s[2]+"</div></div>";}).join("");
+  el("summary-stats").innerHTML=[["On-site manpower",totalWorkers,S.manpower.length+" trades"],["Attendance",here+" here",remote+" remote · "+absent+" absent"],["Open tasks",openTasks,S.coord.length+" total"],["Open conflicts",openCf,blocking+" blocking · "+overdueCf+" overdue"],["Open inspections",openIns,""]].map(function(s){return "<div class='stat'><div class='k'>"+s[0]+"</div><div class='v'>"+s[1]+"</div><div class='sub'>"+s[2]+"</div></div>";}).join("");
   el("summary-att").innerHTML=S.attendance.length?S.attendance.map(function(a){var col=a.status==="here"?"var(--done)":a.status==="remote"?"var(--amber)":"#c3ccd4";return "<div class='a'><span class='d' style='background:"+col+"'></span>"+esc(a.name)+"</div>";}).join(""):"<span class='hint'>No attendees recorded.</span>";
   var byTrade={};S.manpower.forEach(function(r){if(!r.trade)return;var t=byTrade[r.trade]||(byTrade[r.trade]={supv:0,journ:0,labor:0,app:0,safety:0});["supv","journ","labor","app","safety"].forEach(function(k){t[k]+=(+r[k]||0);});});
   var keys=Object.keys(byTrade),mh="<thead><tr><th>Trade</th><th class='num'>Supv</th><th class='num'>Journ</th><th class='num'>Labor</th><th class='num'>App</th><th class='num'>Safety</th><th class='num'>Total</th></tr></thead><tbody>";
@@ -532,7 +565,7 @@ function renderSummary(){
   if(keys.length)mh+="<tr class='totrow'><td>TOTAL</td>"+tot.map(function(t){return "<td class='num'>"+t+"</td>";}).join("")+"<td class='num'>"+tot.reduce(function(a,b){return a+b;},0)+"</td></tr>";
   mh+="</tbody>";el("summary-manpower").innerHTML=mh;
   var oc=S.conflicts.filter(function(c){return c.status!=="Complete";});
-  el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Building</th><th>Trade</th><th>Location</th><th>Type</th><th>Description</th><th>Blocking?</th></tr></thead><tbody>"+oc.map(function(c){return "<tr><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td>"+esc(c.location)+"</td><td>"+esc(c.type)+"</td><td>"+esc(c.description)+"</td><td class='num'>"+esc(c.blocking)+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
+  el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Item</th><th>Owner</th><th>Needed By</th></tr></thead><tbody>"+oc.map(function(c){var od=c.neededBy&&c.neededBy<todayKey()?"<span class='flag flag-over'>OVERDUE</span>":"";var loc=c.location?"<span class='confloc'>"+esc(c.location)+"</span>":"";return "<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td><div class='confitem'>"+(c.blocking==="Yes"?"<span class='flag flag-block'>BLOCKING</span>":"")+esc(c.description)+loc+"</div></td><td>"+(c.owner?esc(c.owner):"<span class='flag flag-need'>NO OWNER</span>")+"</td><td class='num'>"+(c.neededBy?esc(c.neededBy)+" "+od:"<span class='flag flag-need'>NO DATE</span>")+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
   el("print-summary-head").innerHTML="<h1>CCJC Daily Trade Coordination — Meeting Summary</h1><div class='pm'>Yates–Metcon · "+esc(S.date)+" · Facilitator: "+esc(S.facilitator||"—")+"</div>";
   el("print-mh-head").innerHTML="<h1>CCJC Man Hours Log</h1><div class='pm'>Yates–Metcon · Week starting "+esc(S.manhours.weekStarting||"—")+"</div>";
 }
@@ -558,7 +591,7 @@ el("nd-go").onclick=function(){
 
 el("btn-export").onclick=function(){var blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ccjc-coordination-"+S.date+".json";a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},400);};
 el("btn-import").onclick=function(){el("filein").click();};
-el("filein").addEventListener("change",function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.trades)throw 0;S=d;save();renderAll();}catch(err){alert("That file isn't valid coordination JSON.");}};r.readAsText(f);e.target.value="";});
+el("filein").addEventListener("change",function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.trades)throw 0;S=normalize(d)||d;save();renderAll();}catch(err){alert("That file isn't valid coordination JSON.");}};r.readAsText(f);e.target.value="";});
 function printAs(cls){document.body.classList.add(cls);window.print();setTimeout(function(){document.body.classList.remove(cls);},300);}
 window.addEventListener("afterprint",function(){document.body.classList.remove("print-summary","print-manhours");});
 el("btn-pdf-summary").onclick=function(){renderSummary();printAs("print-summary");};
