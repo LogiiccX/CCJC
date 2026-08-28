@@ -200,6 +200,10 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   .printonly .pm{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink-soft);}
 }
 .escchip{display:inline-block;font-family:'IBM Plex Mono';font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:7px;margin-left:4px;vertical-align:middle;white-space:nowrap;background:var(--steel);color:#fff;}
+.dropzone{border:2px dashed var(--line);border-radius:10px;padding:13px 16px;text-align:center;color:var(--ink-soft);font-size:13px;background:#faf9f6;margin-bottom:12px;transition:.15s;cursor:pointer;}
+.dropzone:hover{border-color:var(--steel);}
+.dropzone.drag{border-color:var(--brass);background:#f6ead0;color:var(--navy);}
+.impwarn{color:var(--block);font-family:'IBM Plex Mono';font-size:11px;}
 .esc-crit{background:var(--block);color:#fff;}
 .ppcbadge{display:inline-block;font-family:'IBM Plex Mono';font-size:12px;font-weight:600;padding:2px 9px;border-radius:9px;}
 .ppc-good{background:#dcefe2;color:var(--done);}
@@ -294,7 +298,9 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   </section>
 
   <section class="view" id="v-manpower">
-    <div class="sechead"><h2>💪 Manpower</h2><span class="desc">Head counts by trade — feeds the Man Hours log.</span><div class="spacer"></div><button class="btn solid" id="mp-add">+ Add Trade</button></div>
+    <div class="sechead"><h2>💪 Manpower</h2><span class="desc">Head counts by trade — feeds the Man Hours log.</span><div class="spacer"></div><button class="btn" id="mp-import">⬇ Import Check-In</button><button class="btn solid" id="mp-add">+ Add Trade</button></div>
+    <div class="dropzone" id="mp-drop">📥 Drop your <b>Trade Check-In</b> export here (.xlsx or .csv) to auto-fill manpower — or click <b>Import Check-In</b>.</div>
+    <input type="file" id="mp-file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
     <div class="tblwrap"><table id="mp-table"></table></div>
   </section>
 
@@ -396,6 +402,21 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   </div>
 </div>
 
+<div class="overlay" id="imp-overlay">
+  <div class="modal" style="max-width:840px">
+    <div class="mh"><h3>⬇ Import Trade Check-In</h3><p id="imp-sub">Review before applying.</p></div>
+    <div class="mb">
+      <div class="fieldgrid" style="grid-template-columns:210px 1fr;align-items:end;gap:16px;">
+        <div class="field"><label>Check-in date to import</label><select class="f" id="imp-date"></select></div>
+        <div class="field"><label>How to apply</label><div style="padding-top:6px;"><label style="font-weight:400;font-size:13px;margin-right:16px;cursor:pointer;"><input type="radio" name="imp-mode" value="replace" checked> Replace manpower</label><label style="font-weight:400;font-size:13px;cursor:pointer;"><input type="radio" name="imp-mode" value="merge"> Add to existing</label></div></div>
+      </div>
+      <div class="tblwrap" style="margin-top:14px;max-height:330px;overflow:auto;"><table id="imp-table"></table></div>
+      <p class="hint" style="margin-top:8px;">Multiple check-ins from one trade are summed. There's no Safety count on the form, so it stays 0. You can edit any number after importing.</p>
+    </div>
+    <div class="mf"><button class="btn" id="imp-cancel">Cancel</button><button class="btn brass" id="imp-apply">Apply →</button></div>
+  </div>
+</div>
+
 <input type="file" id="filein" accept="application/json" style="display:none">
 
 <script>
@@ -481,6 +502,41 @@ el("mp-add").onclick=function(){S.manpower.push({id:uid(),trade:"",supv:0,journ:
 el("mp-table").addEventListener("input",function(e){var t=e.target;if(!t.dataset.mp)return;var r=S.manpower.find(function(x){return x.id===t.dataset.mp;});r[t.dataset.k]=t.dataset.k==="trade"?t.value:(+t.value||0);if(t.dataset.k!=="trade")renderManpower();touch();});
 el("mp-table").addEventListener("change",function(e){var t=e.target;if(t.dataset.k==="trade"){S.manpower.find(function(x){return x.id===t.dataset.mp;}).trade=t.value;touch();}});
 el("mp-table").addEventListener("click",function(e){var d=e.target.closest("[data-delmp]");if(d){S.manpower=S.manpower.filter(function(x){return x.id!==d.dataset.delmp;});renderManpower();touch();}});
+
+/* ===== Manpower Import from Trade Check-In (dependency-free .xlsx/.csv) ===== */
+var IMPORT=null;
+function xcolToIdx(letters){var n=0;for(var i=0;i<letters.length;i++)n=n*26+(letters.charCodeAt(i)-64);return n-1;}
+function pint(v){var n=parseInt(String(v==null?"":v).replace(/[^0-9-]/g,""),10);return isNaN(n)?0:n;}
+function xlDate(v){if(v==null||v==="")return "";var s=String(v).trim();if(/^\d+(\.\d+)?$/.test(s)){var day=Math.floor(parseFloat(s));var d=new Date((day-25569)*86400000);if(!isNaN(d))return d.toISOString().slice(0,10);}var m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+"-"+m[2]+"-"+m[3];var m2=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);if(m2){var mo=("0"+m2[1]).slice(-2),da=("0"+m2[2]).slice(-2);return m2[3]+"-"+mo+"-"+da;}var d2=new Date(s);if(!isNaN(d2))return d2.toISOString().slice(0,10);return "";}
+async function inflateRaw(u8){var ds=new DecompressionStream("deflate-raw");var stream=new Response(new Blob([u8])).body.pipeThrough(ds);var buf=await new Response(stream).arrayBuffer();return new Uint8Array(buf);}
+async function unzip(u8){var files={};var eocd=-1;for(var i=u8.length-22;i>=0;i--){if(u8[i]===80&&u8[i+1]===75&&u8[i+2]===5&&u8[i+3]===6){eocd=i;break;}}if(eocd<0)throw new Error("That doesn't look like a valid .xlsx file.");var dv=new DataView(u8.buffer,u8.byteOffset);var cdCount=dv.getUint16(eocd+10,true);var p=dv.getUint32(eocd+16,true);for(var n=0;n<cdCount;n++){if(dv.getUint32(p,true)!==0x02014b50)break;var method=dv.getUint16(p+10,true);var compSize=dv.getUint32(p+20,true);var nameLen=dv.getUint16(p+28,true);var extraLen=dv.getUint16(p+30,true);var commentLen=dv.getUint16(p+32,true);var localOff=dv.getUint32(p+42,true);var name=new TextDecoder().decode(u8.subarray(p+46,p+46+nameLen));var lNameLen=dv.getUint16(localOff+26,true);var lExtraLen=dv.getUint16(localOff+28,true);var dataStart=localOff+30+lNameLen+lExtraLen;var comp=u8.subarray(dataStart,dataStart+compSize);var out;if(method===0)out=comp;else if(method===8)out=await inflateRaw(comp);else{p+=46+nameLen+extraLen+commentLen;continue;}files[name]=out;p+=46+nameLen+extraLen+commentLen;}return files;}
+async function readXlsx(ab){if(typeof DecompressionStream==="undefined")throw new Error("This browser can't read .xlsx in-app. Please export the form as CSV and drop that instead.");var u8=new Uint8Array(ab);var files=await unzip(u8);var dec=new TextDecoder();var shared=[];if(files["xl/sharedStrings.xml"]){var sdoc=new DOMParser().parseFromString(dec.decode(files["xl/sharedStrings.xml"]),"application/xml");shared=Array.prototype.map.call(sdoc.getElementsByTagNameNS("*","si"),function(si){return Array.prototype.map.call(si.getElementsByTagNameNS("*","t"),function(t){return t.textContent;}).join("");});}
+var sheetPath="xl/worksheets/sheet1.xml";if(!files[sheetPath])sheetPath=Object.keys(files).find(function(k){return /^xl\/worksheets\/sheet\d+\.xml$/.test(k);});if(!sheetPath)throw new Error("Couldn't find a worksheet in that file.");var doc=new DOMParser().parseFromString(dec.decode(files[sheetPath]),"application/xml");var rows=[];Array.prototype.forEach.call(doc.getElementsByTagNameNS("*","row"),function(row){var cells={},maxc=-1;Array.prototype.forEach.call(row.getElementsByTagNameNS("*","c"),function(c){var ref=c.getAttribute("r")||"";var col=xcolToIdx(ref.replace(/[0-9]/g,"")||"A");var t=c.getAttribute("t");var v="";var vEl=c.getElementsByTagNameNS("*","v")[0];var isEl=c.getElementsByTagNameNS("*","is")[0];if(t==="s"&&vEl)v=shared[parseInt(vEl.textContent,10)]||"";else if(t==="inlineStr"&&isEl)v=Array.prototype.map.call(isEl.getElementsByTagNameNS("*","t"),function(x){return x.textContent;}).join("");else if(vEl)v=vEl.textContent;cells[col]=v;if(col>maxc)maxc=col;});var arr=[];for(var i=0;i<=maxc;i++)arr.push(cells[i]!==undefined?cells[i]:"");rows.push(arr);});return rows;}
+function readCsv(text){var rows=[],row=[],cur="",q=false;text=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");for(var i=0;i<text.length;i++){var ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}else{if(ch==='"')q=true;else if(ch===","){row.push(cur);cur="";}else if(ch==="\n"){row.push(cur);rows.push(row);row=[];cur="";}else cur+=ch;}}if(cur!==""||row.length){row.push(cur);rows.push(row);}return rows;}
+function mapCols(header){var h=header.map(function(x){return String(x).toLowerCase().trim();});function find(f){for(var i=0;i<h.length;i++)if(f(h[i]))return i;return -1;}var m={date:find(function(x){return x.indexOf("completion")>=0;}),trade:find(function(x){return x==="trade name"||(x.indexOf("trade")>=0&&x.indexOf("name")>=0&&x.indexOf("manpower")<0);}),supv:find(function(x){return x.indexOf("manpower")>=0&&x.indexOf("superintendent")>=0;}),journ:find(function(x){return x.indexOf("manpower")>=0&&x.indexOf("journ")>=0;}),labor:find(function(x){return x.indexOf("manpower")>=0&&x.indexOf("labor")>=0;}),app:find(function(x){return x.indexOf("manpower")>=0&&x.indexOf("apprentice")>=0;})};if(m.date<0)m.date=find(function(x){return x.indexOf("start time")>=0||x==="date";});if(m.date<0)m.date=2;if(m.trade<0)m.trade=6;if(m.supv<0)m.supv=8;if(m.journ<0)m.journ=9;if(m.labor<0)m.labor=10;if(m.app<0)m.app=11;return m;}
+function buildRecords(rows){if(!rows.length)return [];var cm=mapCols(rows[0]);var recs=[];for(var i=1;i<rows.length;i++){var r=rows[i];if(!r)continue;var trade=String(r[cm.trade]==null?"":r[cm.trade]).trim();if(!trade)continue;recs.push({date:xlDate(r[cm.date]),trade:trade,supv:pint(r[cm.supv]),journ:pint(r[cm.journ]),labor:pint(r[cm.labor]),app:pint(r[cm.app])});}return recs;}
+function aggFor(date){var g={};IMPORT.recs.forEach(function(r){if(r.date!==date)return;var key=r.trade.toUpperCase();var t=g[key]||(g[key]={trade:r.trade,n:0,supv:0,journ:0,labor:0,app:0});t.n++;t.supv+=r.supv;t.journ+=r.journ;t.labor+=r.labor;t.app+=r.app;});return Object.keys(g).sort().map(function(k){return g[k];});}
+function matchTrade(name){var low=name.toLowerCase();return S.trades.find(function(t){return t.toLowerCase()===low;})||"";}
+function openImport(rows){var recs=buildRecords(rows);if(!recs.length){alert("No trade check-in rows found in that file. Make sure it's the Trade Check-In export.");return;}var dm={};recs.forEach(function(r){if(r.date)dm[r.date]=1;});var dates=Object.keys(dm).sort().reverse();if(!dates.length)dates=[S.date];IMPORT={recs:recs,dates:dates,agg:[],date:""};el("imp-date").innerHTML=dates.map(function(d){return "<option"+(d===S.date?" selected":"")+">"+esc(d)+"</option>";}).join("");if(dates.indexOf(S.date)<0)el("imp-date").value=dates[0];renderImp();el("imp-overlay").classList.add("on");}
+function renderImp(){var date=el("imp-date").value;IMPORT.date=date;var agg=aggFor(date);IMPORT.agg=agg;var tw=0,pw=0;agg.forEach(function(a){tw+=a.supv+a.journ+a.labor+a.app;});el("imp-sub").innerHTML=agg.length?("<b>"+agg.length+"</b> trades · <b>"+tw+"</b> workers checked in on <b>"+esc(date)+"</b>"):"No check-ins found for "+esc(date)+".";
+  var head="<thead><tr><th>Trade (from form)</th><th class='num'>Chk-ins</th><th class='num'>Supv</th><th class='num'>Journ</th><th class='num'>Labor</th><th class='num'>App</th><th class='num'>Total</th><th>Map to</th></tr></thead>",body="<tbody>";
+  if(!agg.length)body+="<tr><td colspan='8'><div class='emptymsg'>Nothing to import for this date.</div></td></tr>";
+  agg.forEach(function(a,i){var tot=a.supv+a.journ+a.labor+a.app;var mt=matchTrade(a.trade);var warn=a.n>1?" <span class='impwarn' title='"+a.n+" separate check-ins summed'>×"+a.n+"</span>":"";
+    var sel="<select class='f' data-idx='"+i+"' style='min-width:150px'>"+S.trades.map(function(t){return "<option"+(t===mt?" selected":"")+">"+esc(t)+"</option>";}).join("")+"<option value='__add__'"+(mt?"":" selected")+">➕ Add \""+esc(a.trade)+"\"</option><option value='__skip__'>Skip</option></select>";
+    body+="<tr><td><b>"+esc(a.trade)+"</b>"+warn+"</td><td class='num'>"+a.n+"</td><td class='num'>"+a.supv+"</td><td class='num'>"+a.journ+"</td><td class='num'>"+a.labor+"</td><td class='num'>"+a.app+"</td><td class='num'><b>"+tot+"</b></td><td>"+sel+"</td></tr>";});
+  body+="</tbody>";el("imp-table").innerHTML=head+body;}
+function readImportFile(file){if(!file)return;var name=(file.name||"").toLowerCase();var done=function(rows){try{openImport(rows);}catch(err){alert("Couldn't read that file: "+err.message);}};if(name.endsWith(".csv")){file.text().then(function(t){done(readCsv(t));}).catch(function(e){alert("Couldn't read CSV: "+e.message);});}else{file.arrayBuffer().then(function(ab){return readXlsx(ab);}).then(done).catch(function(e){alert("Couldn't read that .xlsx: "+e.message);});}}
+el("mp-import").onclick=function(){el("mp-file").click();};
+el("mp-file").onchange=function(e){readImportFile(e.target.files[0]);e.target.value="";};
+(function(){var dz=el("mp-drop");if(!dz)return;dz.onclick=function(){el("mp-file").click();};["dragenter","dragover"].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add("drag");});});["dragleave","drop"].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove("drag");});});dz.addEventListener("drop",function(e){var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];readImportFile(f);});})();
+el("imp-date").onchange=renderImp;
+el("imp-cancel").onclick=function(){el("imp-overlay").classList.remove("on");IMPORT=null;};
+el("imp-overlay").addEventListener("click",function(e){if(e.target===this){this.classList.remove("on");IMPORT=null;}});
+el("imp-apply").onclick=function(){if(!IMPORT)return;var mode=document.querySelector("input[name='imp-mode']:checked").value;var built=[];IMPORT.agg.forEach(function(a,i){var selEl=el("imp-table").querySelector("select[data-idx='"+i+"']");if(!selEl)return;var v=selEl.value;if(v==="__skip__")return;var target=v==="__add__"?a.trade:v;if(!S.trades.some(function(t){return t.toLowerCase()===target.toLowerCase();}))S.trades.push(target);else target=S.trades.find(function(t){return t.toLowerCase()===target.toLowerCase();});built.push({trade:target,supv:a.supv,journ:a.journ,labor:a.labor,app:a.app});});
+  if(!built.length){alert("Nothing selected to import.");return;}
+  if(mode==="merge"){built.forEach(function(b){var ex=S.manpower.find(function(x){return x.trade&&x.trade.toLowerCase()===b.trade.toLowerCase();});if(ex){ex.supv+=b.supv;ex.journ+=b.journ;ex.labor+=b.labor;ex.app+=b.app;}else S.manpower.push({id:uid(),trade:b.trade,supv:b.supv,journ:b.journ,labor:b.labor,app:b.app,safety:0});});}
+  else{S.manpower=built.map(function(b){return {id:uid(),trade:b.trade,supv:b.supv,journ:b.journ,labor:b.labor,app:b.app,safety:0};});}
+  el("imp-overlay").classList.remove("on");IMPORT=null;renderManpower();renderTrades();renderSummary();renderTabs();current="manpower";renderTabs();showView();touch();};
 
 var coordBuilding="Sitewide";
 function statusSel(v,ns,id){return "<select class='statussel' data-v='"+v+"' data-statusns='"+ns+"' data-statusid='"+id+"'>"+opts(["Planned","Active","Blocked","Complete"],v)+"</select>";}
