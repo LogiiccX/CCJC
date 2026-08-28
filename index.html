@@ -256,6 +256,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
     <div class="statgrid" id="summary-stats"></div>
     <div class="card"><div class="cardhead"><h3>👥 Attendance Snapshot</h3></div><div class="cardbody"><div class="attsnap" id="summary-att"></div></div></div>
     <div class="card"><div class="cardhead"><h3>💪 Manpower by Trade</h3></div><div class="cardbody" style="padding:0;"><div class="tblwrap" style="border:0;box-shadow:none;border-radius:0;"><table id="summary-manpower"></table></div></div></div>
+    <div class="card"><div class="cardhead"><h3>🏗 Trade Coordination</h3></div><div class="cardbody" id="summary-coord"></div></div>
     <div class="card"><div class="cardhead"><h3>⚠️ Open Conflicts</h3></div><div class="cardbody" id="summary-conflicts"></div></div>
     <div class="card"><div class="cardhead"><h3>🔍 Open Inspections</h3></div><div class="cardbody" id="summary-inspections"></div></div>
   </section>
@@ -571,6 +572,7 @@ document.addEventListener("change",function(e){
 
 function daysBetween(a,b){if(!a||!b)return null;var da=new Date(a+"T00:00:00"),db=new Date(b+"T00:00:00");if(isNaN(da)||isNaN(db))return null;return Math.round((db-da)/86400000);}
 function sevChip(s){s=s||"Priority";var cls=s==="Critical"?"sev-crit":(s==="Routine"?"sev-rout":"sev-pri");return "<span class='sevchip "+cls+"'>"+esc(s)+"</span>";}
+function coordPill(s){var m={Planned:"var(--plan)",Active:"var(--active)",Blocked:"var(--block)",Complete:"var(--done)"};var c=m[s]||"var(--plan)";return "<span style='display:inline-block;font-family:\"IBM Plex Mono\";font-size:10px;font-weight:600;padding:2px 8px;border-radius:9px;background:"+c+";color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact'>"+esc(s||"Planned")+"</span>";}
 function ageBadge(c){var age=daysBetween(c.createdAt,todayKey());if(age==null)age=0;var cls="age-ok";if(c.status!=="Complete"){if(age>=7)cls="age-hot";else if(age>=3)cls="age-warn";}return "<span class='agebadge "+cls+"' title='Days open'>"+age+"d</span>";}
 function confFlags(c){if(c.status==="Complete")return "";var f="",t=todayKey();var od=c.neededBy?daysBetween(c.neededBy,t):null;if(od!=null&&od>0)f+="<span class='flag flag-over'>OVERDUE "+od+"d</span>";if(!c.owner)f+="<span class='flag flag-need'>NO OWNER</span>";if(!c.neededBy)f+="<span class='flag flag-need'>NO DATE</span>";return f;}
 function renderConflicts(){
@@ -751,6 +753,11 @@ function renderSummary(){
   var tot=[0,0,0,0,0];keys.forEach(function(k){var t=byTrade[k],rt=0;["supv","journ","labor","app","safety"].forEach(function(x,i){rt+=t[x];tot[i]+=t[x];});mh+="<tr><td>"+esc(k)+"</td><td class='num'>"+t.supv+"</td><td class='num'>"+t.journ+"</td><td class='num'>"+t.labor+"</td><td class='num'>"+t.app+"</td><td class='num'>"+t.safety+"</td><td class='num'><b>"+rt+"</b></td></tr>";});
   if(keys.length)mh+="<tr class='totrow'><td>TOTAL</td>"+tot.map(function(t){return "<td class='num'>"+t+"</td>";}).join("")+"<td class='num'>"+tot.reduce(function(a,b){return a+b;},0)+"</td></tr>";
   mh+="</tbody>";el("summary-manpower").innerHTML=mh;
+  var cbb={};S.coord.forEach(function(t){if(!t.text||!t.text.trim())return;(cbb[t.building]=cbb[t.building]||[]).push(t);});
+  var cOrder=BUILDINGS.filter(function(b){return cbb[b];}).concat(Object.keys(cbb).filter(function(b){return BUILDINGS.indexOf(b)<0;}));
+  var cTotal=cOrder.reduce(function(a,b){return a+cbb[b].length;},0);
+  if(!cTotal)el("summary-coord").innerHTML="<div class='emptymsg'>No trade coordination items logged.</div>";
+  else{var ch="<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Building</th><th>Trade</th><th>Coordination Item</th><th>Status</th></tr></thead><tbody>";cOrder.forEach(function(b){cbb[b].forEach(function(t,i){ch+="<tr><td>"+(i===0?"<b>"+esc(b)+"</b>":"")+"</td><td>"+esc(t.trade)+"</td><td>"+esc(t.text)+"</td><td>"+coordPill(t.status)+"</td></tr>";});});ch+="</tbody></table></div>";el("summary-coord").innerHTML=ch;}
   var oc=S.conflicts.filter(function(c){return c.status!=="Complete";});
   el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Item</th><th>Owner</th><th>Needed By</th></tr></thead><tbody>"+oc.map(function(c){var od=c.neededBy&&c.neededBy<todayKey()?"<span class='flag flag-over'>OVERDUE</span>":"";var loc=c.location?"<span class='confloc'>"+esc(c.location)+"</span>":"";return "<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td><div class='confitem'>"+(c.blocking==="Yes"?"<span class='flag flag-block'>BLOCKING</span>":"")+esc(c.description)+loc+"</div></td><td>"+(c.owner?esc(c.owner):"<span class='flag flag-need'>NO OWNER</span>")+"</td><td class='num'>"+(c.neededBy?esc(c.neededBy)+" "+od:"<span class='flag flag-need'>NO DATE</span>")+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
   var oi=S.inspections.filter(function(i){return i.status!=="Complete";});
