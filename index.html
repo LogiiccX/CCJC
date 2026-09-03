@@ -421,6 +421,62 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
   </div>
 </div>
 
+<div class="overlay" id="sync-overlay">
+  <div class="modal" style="max-width:660px">
+    <div class="mh"><h3>Multi-Computer Sync</h3><p>Keep this jobsite's data in step across computers. Optional — the app works fully offline without it.</p></div>
+    <div class="mb">
+      <div id="sync-statusline" class="hint" style="margin-bottom:12px;padding:8px 10px;background:#faf9f6;border-radius:8px;"></div>
+      <div class="field"><label>Sync URL (your Apps Script web-app URL)</label><input class="f" id="sync-url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="field" style="margin-top:10px;"><label>This computer's name</label><input class="f" id="sync-device" placeholder="e.g. Trailer PC"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn brass" id="sync-connect">Connect &amp; Sync</button>
+        <button class="btn" id="sync-now">↻ Sync Now</button>
+        <button class="btn danger" id="sync-disconnect">Disconnect</button>
+      </div>
+      <p class="hint" style="margin-top:10px;">Newest change wins across computers. If two people edit the same day on different computers, whoever saves last is kept — so it's best to have one person drive per day.</p>
+      <details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:700;color:var(--navy);">How to set this up (one time, about 5 minutes)</summary>
+        <ol style="font-size:13px;line-height:1.75;padding-left:20px;margin-top:8px;">
+          <li>Go to <b>script.google.com</b> and click <b>New project</b>.</li>
+          <li>Delete the sample code. Click <b>Copy Apps Script code</b> below and paste it in.</li>
+          <li>Click <b>Deploy → New deployment</b>. Choose type <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Click Deploy and authorize when asked.</li>
+          <li>Copy the <b>Web app URL</b> it gives you. Paste it in <b>Sync URL</b> above, name this computer, and click <b>Connect &amp; Sync</b>.</li>
+          <li>On any other computer, open this app, tap the save chip to open this window, paste the <b>same URL</b>, and Connect.</li>
+        </ol>
+        <button class="btn sm" id="sync-copycode">⧉ Copy Apps Script code</button>
+      </details>
+    </div>
+    <div class="mf"><button class="btn" id="sync-close">Close</button></div>
+  </div>
+</div>
+
+<script type="text/plain" id="sync-code">/**
+ * CCJC Daily Trade Coordination — Sync backend
+ * Stores one JSON file in your Google Drive. No spreadsheet, no password needed.
+ * Deploy: Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone.
+ */
+var FILE_NAME = 'ccjc_coord_sync.json';
+
+function _file(){
+  var it = DriveApp.getFilesByName(FILE_NAME);
+  if (it.hasNext()) return it.next();
+  return DriveApp.createFile(FILE_NAME, JSON.stringify({updatedAt:0, device:'', state:null}), 'application/json');
+}
+function doGet(e){
+  try{
+    var d = JSON.parse(_file().getBlob().getDataAsString() || '{}');
+    return _out({ok:true, updatedAt:d.updatedAt||0, device:d.device||'', state:d.state||null});
+  }catch(err){ return _out({ok:false, error:String(err)}); }
+}
+function doPost(e){
+  try{
+    var b = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    _file().setContent(JSON.stringify({updatedAt:b.updatedAt||Date.now(), device:b.device||'', state:b.state||null}));
+    return _out({ok:true, updatedAt:b.updatedAt||0});
+  }catch(err){ return _out({ok:false, error:String(err)}); }
+}
+function _out(o){ return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+</script>
+
 <input type="file" id="filein" accept="application/json" style="display:none">
 
 <script>
@@ -442,9 +498,24 @@ function normMr(m){m=m||{};return {id:m.id||uid(),building:m.building||"Sitewide
 function normalize(s){if(!s||!s.trades)return null;s.conflicts=(s.conflicts||[]).map(normConf);s.makeready=(s.makeready||[]).map(normMr);s.ppc=s.ppc||[];s.mpHistory=s.mpHistory||[];return s;}
 function load(){if(!canLS)return mem||(mem=fresh());try{var raw=localStorage.getItem(STORE);if(raw){var s=normalize(JSON.parse(raw));if(s)return s;}var old=localStorage.getItem(STORE_V1);if(old){var o=normalize(JSON.parse(old));if(o)return o;}return fresh();}catch(e){return fresh();}}
 var S=load();var dirty=false,st;
-function save(){if(canLS){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){mem=S;}}else mem=S;dirty=false;paintSave();}
+function persist(){if(canLS){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){mem=S;}}else mem=S;}
+function save(){persist();dirty=false;paintSave();if(SYNC.enabled){SYNC.localUpdatedAt=Date.now();saveSyncCfg();schedulePush();}}
 function touch(){dirty=true;paintSave();clearTimeout(st);st=setTimeout(save,400);}
-function paintSave(){var c=el("savechip");c.classList.toggle("dirty",dirty);c.querySelector("span:nth-child(2)").textContent=dirty?"Saving…":"Saved";el("savemode").textContent=canLS?"· Local only":"· Session only";}
+function paintSave(){var c=el("savechip");c.classList.toggle("dirty",dirty);c.querySelector("span:nth-child(2)").textContent=dirty?"Saving…":"Saved";if(!SYNC.enabled)el("savemode").textContent=canLS?"· Local only":"· Session only";else paintSyncMode();}
+/* ===== Multi-computer sync (opt-in, Google Apps Script backend) ===== */
+function loadSyncCfg(){try{var c=JSON.parse(localStorage.getItem("ccjc_sync_cfg"));if(c&&c.deviceId)return c;}catch(e){}return {enabled:false,url:"",key:"",deviceName:"",deviceId:"dev-"+Math.random().toString(36).slice(2,8),localUpdatedAt:0,lastText:""};}
+function saveSyncCfg(){try{localStorage.setItem("ccjc_sync_cfg",JSON.stringify(SYNC));}catch(e){}}
+var SYNC=loadSyncCfg();var _syncState="idle",_pushTimer=null,_syncInt=null;
+function fmtTime(){try{return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}catch(e){return "";}}
+function paintSyncMode(){var map={syncing:"· Syncing…",ok:"· Synced "+(SYNC.lastText||""),offline:"· Offline — will retry",error:"· Sync error — check settings",idle:"· Sync on"};el("savemode").textContent=map[_syncState]||"· Sync on";}
+function setSyncStatus(s){_syncState=s;if(s==="ok"){SYNC.lastText=fmtTime();saveSyncCfg();}if(SYNC.enabled)paintSyncMode();if(el("sync-statusline"))paintSyncStatusLine();}
+function schedulePush(){if(!SYNC.enabled||!SYNC.url)return;clearTimeout(_pushTimer);_pushTimer=setTimeout(syncPush,2500);}
+function syncPush(){if(!SYNC.enabled||!SYNC.url)return Promise.resolve();setSyncStatus("syncing");var payload={updatedAt:SYNC.localUpdatedAt||Date.now(),device:SYNC.deviceName||SYNC.deviceId,state:S};return fetch(SYNC.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)}).then(function(r){return r.json();}).then(function(res){if(res&&res.ok){SYNC.remoteUpdatedAt=payload.updatedAt;saveSyncCfg();setSyncStatus("ok");}else{setSyncStatus("error");}}).catch(function(){setSyncStatus("offline");});}
+function syncPull(opts){opts=opts||{};if(!SYNC.enabled||!SYNC.url)return Promise.resolve(false);setSyncStatus("syncing");return fetch(SYNC.url+(SYNC.url.indexOf("?")<0?"?":"&")+"t="+Date.now()).then(function(r){return r.json();}).then(function(res){if(!res||!res.ok){setSyncStatus("error");return false;}if(res.updatedAt&&res.state){var localTs=SYNC.localUpdatedAt||0;if(opts.force||localTs===0||res.updatedAt>localTs){if(opts.confirmAdopt&&localTs>0&&!confirm("Load the shared data from "+(res.device||"another computer")+"?\n\nThis replaces what is currently on THIS computer."))return false;var ns=normalize(res.state);if(ns){S=ns;SYNC.localUpdatedAt=res.updatedAt;SYNC.remoteUpdatedAt=res.updatedAt;saveSyncCfg();persist();renderAll();}}}setSyncStatus("ok");return true;}).catch(function(){setSyncStatus("offline");return false;});}
+function startSyncLoop(){if(_syncInt)clearInterval(_syncInt);if(!SYNC.enabled)return;_syncInt=setInterval(function(){if(!SYNC.enabled||document.visibilityState==="hidden"||dirty)return;var ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;syncPull();},20000);}
+function connectSync(){SYNC.enabled=true;saveSyncCfg();paintSave();syncPull({confirmAdopt:true}).then(function(){return syncPush();}).then(startSyncLoop);}
+function disconnectSync(){SYNC.enabled=false;if(_syncInt)clearInterval(_syncInt);saveSyncCfg();_syncState="idle";paintSave();}
+window.addEventListener("focus",function(){if(SYNC.enabled&&!dirty)syncPull();});
 
 function el(id){return document.getElementById(id);}
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -776,7 +847,7 @@ function renderSummary(){
   var cOrder=BUILDINGS.filter(function(b){return cbb[b];}).concat(Object.keys(cbb).filter(function(b){return BUILDINGS.indexOf(b)<0;}));
   var cTotal=cOrder.reduce(function(a,b){return a+cbb[b].length;},0);
   if(!cTotal)el("summary-coord").innerHTML="<div class='emptymsg'>No trade coordination items logged.</div>";
-  else{var ch="<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Building</th><th>Trade</th><th>Coordination Item</th><th>Status</th></tr></thead><tbody>";cOrder.forEach(function(b){cbb[b].forEach(function(t,i){ch+="<tr><td>"+(i===0?"<b>"+esc(b)+"</b>":"")+"</td><td>"+esc(t.trade)+"</td><td>"+esc(t.text)+"</td><td>"+coordPill(t.status)+"</td></tr>";});});ch+="</tbody></table></div>";el("summary-coord").innerHTML=ch;}
+  else{var ch="<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Building</th><th>Trade</th><th>Coordination Item</th><th>Status</th></tr></thead><tbody>";cOrder.forEach(function(b){var list=cbb[b].slice().sort(function(x,y){var ix=S.trades.indexOf(x.trade),iy=S.trades.indexOf(y.trade);if(ix<0)ix=9999;if(iy<0)iy=9999;if(ix!==iy)return ix-iy;return x.trade<y.trade?-1:(x.trade>y.trade?1:0);});var prevTrade=null;list.forEach(function(t,i){var showTrade=t.trade!==prevTrade;prevTrade=t.trade;ch+="<tr><td>"+(i===0?"<b>"+esc(b)+"</b>":"")+"</td><td>"+(showTrade?"<b>"+esc(t.trade)+"</b>":"")+"</td><td>"+esc(t.text)+"</td><td>"+coordPill(t.status)+"</td></tr>";});});ch+="</tbody></table></div>";el("summary-coord").innerHTML=ch;}
   var oc=S.conflicts.filter(function(c){return c.status!=="Complete";});
   el("summary-conflicts").innerHTML=oc.length?"<div class='tblwrap' style='border:0;box-shadow:none'><table><thead><tr><th>Sev</th><th>Building</th><th>Trade</th><th>Item</th><th>Owner</th><th>Needed By</th></tr></thead><tbody>"+oc.map(function(c){var od=c.neededBy&&c.neededBy<todayKey()?"<span class='flag flag-over'>OVERDUE</span>":"";var loc=c.location?"<span class='confloc'>"+esc(c.location)+"</span>":"";return "<tr><td>"+sevChip(c.severity)+"</td><td>"+esc(c.building)+"</td><td>"+esc(c.trade)+"</td><td><div class='confitem'>"+(c.blocking==="Yes"?"<span class='flag flag-block'>BLOCKING</span>":"")+esc(c.description)+loc+"</div></td><td>"+(c.owner?esc(c.owner):"<span class='flag flag-need'>NO OWNER</span>")+"</td><td class='num'>"+(c.neededBy?esc(c.neededBy)+" "+od:"<span class='flag flag-need'>NO DATE</span>")+"</td></tr>";}).join("")+"</tbody></table></div>":"<div class='emptymsg'>✅ No open conflicts.</div>";
   var oi=S.inspections.filter(function(i){return i.status!=="Complete";});
@@ -827,7 +898,19 @@ el("btn-weekly").onclick=function(){renderRollup();setTimeout(function(){printAs
 el("mh-pdf").onclick=function(){printAs("print-manhours");};
 
 function renderAll(){bindHeader();paintTimer();if(S.timer.running)startTick();renderTabs();renderAttendance();renderManpower();renderCoord();renderConflicts();renderInspections();renderMakeReady();renderJHA();renderFives();renderObs();renderTrades();renderManhours();renderSummary();showView();paintSave();}
+/* sync modal wiring */
+function paintSyncStatusLine(){var sl=el("sync-statusline");if(!sl)return;var m={syncing:"syncing…",ok:"synced "+(SYNC.lastText||""),offline:"offline — will retry when back online",error:"error — double-check the URL",idle:"connected"};sl.innerHTML=SYNC.enabled?("<b>Connected</b> as \u201C"+esc(SYNC.deviceName||SYNC.deviceId)+"\u201D · "+(m[_syncState]||"connected")):"<b>Not connected.</b> Enter your Sync URL below, then Connect.";}
+function openSync(){el("sync-url").value=SYNC.url||"";el("sync-device").value=SYNC.deviceName||"";paintSyncStatusLine();el("sync-overlay").classList.add("on");}
+el("savechip").style.cursor="pointer";el("savechip").title="Sync settings";el("savechip").addEventListener("click",openSync);
+el("sync-close").onclick=function(){el("sync-overlay").classList.remove("on");};
+el("sync-overlay").addEventListener("click",function(e){if(e.target===this)this.classList.remove("on");});
+el("sync-connect").onclick=function(){var url=el("sync-url").value.trim();if(!url){alert("Enter the Sync URL.");return;}SYNC.url=url;SYNC.deviceName=el("sync-device").value.trim();saveSyncCfg();connectSync();setTimeout(paintSyncStatusLine,300);};
+el("sync-now").onclick=function(){if(!SYNC.enabled){alert("Connect first.");return;}syncPull().then(function(){return syncPush();}).then(paintSyncStatusLine);};
+el("sync-disconnect").onclick=function(){disconnectSync();paintSyncStatusLine();};
+function fallbackCopy(t){var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");el("sync-copycode").textContent="\u2713 Copied";setTimeout(function(){el("sync-copycode").textContent="\u29C9 Copy Apps Script code";},1500);}catch(e){alert("Copy failed — select the code manually.");}document.body.removeChild(ta);}
+el("sync-copycode").onclick=function(){var code=el("sync-code").textContent.trim();if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(function(){el("sync-copycode").textContent="\u2713 Copied";setTimeout(function(){el("sync-copycode").textContent="\u29C9 Copy Apps Script code";},1500);},function(){fallbackCopy(code);});}else fallbackCopy(code);};
 renderAll();
+if(SYNC.enabled&&SYNC.url){paintSave();syncPull().then(startSyncLoop);}
 })();
 </script>
 </body>
