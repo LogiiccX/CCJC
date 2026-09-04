@@ -635,11 +635,11 @@ function renderCoord(){
 el("coord-subtabs").addEventListener("click",function(e){var b=e.target.closest("[data-cb]");if(b){coordBuilding=b.dataset.cb;renderCoord();}});
 el("coord-blocks").addEventListener("click",function(e){
   var addt=e.target.closest("#coord-addtrade");
-  if(addt){var sel=el("coord-addsel");var tr=sel&&sel.value;if(tr){S.coord.push({id:uid(),building:coordBuilding,trade:tr,text:"",status:"Planned"});renderCoord();renderTabs();touch();var all=document.querySelectorAll("[data-coordtext]");if(all.length)all[all.length-1].focus();}return;}
+  if(addt){var sel=el("coord-addsel");var tr=sel&&sel.value;if(tr){var nid=uid();S.coord.push({id:nid,building:coordBuilding,trade:tr,text:"",status:"Planned"});renderCoord();renderTabs();touch();var nt=document.querySelector("[data-coordtext='"+nid+"']");if(nt)nt.focus({preventScroll:true});}return;}
   var rem=e.target.closest("[data-coordremove]");
   if(rem){var trn=rem.dataset.coordremove;var has=S.coord.some(function(t){return t.building===coordBuilding&&t.trade===trn&&t.text&&t.text.trim();});if(has&&!confirm("Remove "+trn+" from "+coordBuilding+"? This deletes its coordination tasks in this building. (The trade stays available elsewhere.)"))return;S.coord=S.coord.filter(function(t){return !(t.building===coordBuilding&&t.trade===trn);});renderCoord();renderTabs();renderSummary();touch();return;}
   var a=e.target.closest("[data-coordadd]");
-  if(a){S.coord.push({id:uid(),building:coordBuilding,trade:a.dataset.coordadd,text:"",status:"Planned"});renderCoord();renderTabs();touch();var all2=document.querySelectorAll("[data-coordtext]");if(all2.length)all2[all2.length-1].focus();return;}
+  if(a){var nid2=uid();S.coord.push({id:nid2,building:coordBuilding,trade:a.dataset.coordadd,text:"",status:"Planned"});renderCoord();renderTabs();touch();var nt2=document.querySelector("[data-coordtext='"+nid2+"']");if(nt2)nt2.focus({preventScroll:true});return;}
   var d=e.target.closest("[data-coorddel]");if(d){S.coord=S.coord.filter(function(x){return x.id!==d.dataset.coorddel;});renderCoord();renderTabs();renderSummary();touch();}
 });
 el("coord-blocks").addEventListener("input",function(e){var t=e.target;if(t.dataset.coordtext){S.coord.find(function(x){return x.id===t.dataset.coordtext;}).text=t.value;autoGrow(t);touch();}});
