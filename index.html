@@ -129,6 +129,9 @@ select.statussel[data-v="Blocked"],select.statussel[data-v="Failed"]{color:#fff;
 select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
 
 .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.attgroup{margin-bottom:18px;}
+.attgrouphead{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;color:var(--navy);font-size:15px;text-transform:uppercase;letter-spacing:.4px;padding:2px 0 8px;border-bottom:2px solid var(--brass);margin-bottom:11px;display:flex;align-items:baseline;gap:9px;}
+.attgrouphead .cnt{font-family:'IBM Plex Mono';font-size:10.5px;font-weight:600;color:var(--ink-soft);background:#eceae3;padding:1px 8px;border-radius:9px;letter-spacing:0;text-transform:none;}
 .person{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;}
 .person .statusdot{width:16px;height:16px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
 .person .statusdot.here{background:var(--done);}
@@ -298,7 +301,7 @@ select.statussel[data-v="Complete"]{color:#fff;background-color:var(--done);}
       <div class="fieldgrid" style="grid-template-columns:1fr 1fr 150px;"><div class="field"><label>Name</label><input class="f" id="att-name"></div><div class="field"><label>Company / Trade</label><select class="f" id="att-company"></select></div><div class="field"><label>Status</label><select class="f" id="att-status"><option value="here">Here</option><option value="remote">Remote / Teams</option><option value="absent">Absent</option></select></div></div>
       <div class="formactions"><button class="btn solid sm" id="att-save">Add</button><button class="btn sm" data-close="att-form">Cancel</button></div>
     </div>
-    <div class="people" id="att-list"></div>
+    <div id="att-list"></div>
   </section>
 
   <section class="view" id="v-manpower">
@@ -550,7 +553,14 @@ el("timer-reset").onclick=function(){S.timer={running:false,elapsed:0,startedAt:
 function renderAttendance(){
   var wrap=el("att-list");
   if(!S.attendance.length){wrap.innerHTML="<div class='emptymsg'>No attendees yet. Click <b>+ Add Person</b>.</div>";return;}
-  wrap.innerHTML=S.attendance.map(function(p){return "<div class='person'><span class='statusdot "+p.status+"' data-id='"+p.id+"'></span><div><div class='nm'>"+esc(p.name)+"</div><div class='co'>"+esc(p.company||"")+"</div></div><button class='x' data-del='"+p.id+"'>✕</button></div>";}).join("");
+  var g={};S.attendance.forEach(function(p){var k=(p.company||"").trim()||"\u2014 No trade \u2014";(g[k]=g[k]||[]).push(p);});
+  var order=S.trades.filter(function(t){return g[t];}).concat(Object.keys(g).filter(function(k){return S.trades.indexOf(k)<0;}).sort());
+  wrap.innerHTML=order.map(function(k){
+    var list=g[k].slice().sort(function(a,b){var an=a.name.toLowerCase(),bn=b.name.toLowerCase();return an<bn?-1:(an>bn?1:0);});
+    var here=list.filter(function(p){return p.status==="here";}).length;
+    var cards=list.map(function(p){return "<div class='person'><span class='statusdot "+p.status+"' data-id='"+p.id+"'></span><div class='nm'>"+esc(p.name)+"</div><button class='x' data-del='"+p.id+"'>\u2715</button></div>";}).join("");
+    return "<div class='attgroup'><div class='attgrouphead'>"+esc(k)+"<span class='cnt'>"+here+"/"+list.length+" here</span></div><div class='people'>"+cards+"</div></div>";
+  }).join("");
 }
 el("att-list").addEventListener("click",function(e){
   var dot=e.target.closest(".statusdot");
